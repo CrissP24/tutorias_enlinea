@@ -1,13 +1,21 @@
 // User roles
 export type UserRole = 'admin' | 'docente' | 'estudiante';
 
-// User interface
+// User status
+export type UserStatus = 'activo' | 'inactivo';
+
+// User interface - Updated with new fields
 export interface User {
   id: string;
+  cedula: string;
   nombre: string;
   email: string;
   password: string; // Encrypted
   rol: UserRole;
+  carrera: string;
+  nivel: string;
+  estado: UserStatus;
+  forcePasswordChange: boolean;
   createdAt: string;
 }
 
@@ -30,6 +38,17 @@ export interface Tutoria {
   updatedAt: string;
 }
 
+// Notification interface
+export interface Notification {
+  id: string;
+  userId: string;
+  mensaje: string;
+  tipo: 'solicitud' | 'aceptada' | 'rechazada' | 'reprogramada' | 'calificacion';
+  leido: boolean;
+  fecha: string;
+  tutoriaId?: string;
+}
+
 // Session interface
 export interface Session {
   user: User;
@@ -43,11 +62,14 @@ export interface LoginFormData {
 }
 
 export interface RegisterFormData {
+  cedula: string;
   nombre: string;
   email: string;
   password: string;
   confirmPassword: string;
   rol: UserRole;
+  carrera: string;
+  nivel: string;
 }
 
 export interface TutoriaFormData {
@@ -61,6 +83,19 @@ export interface TutoriaFormData {
 export interface RatingFormData {
   calificacion: number;
   comentario: string;
+}
+
+export interface ProfileFormData {
+  nombre: string;
+  email: string;
+  carrera: string;
+  nivel: string;
+}
+
+export interface PasswordChangeFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 // Stats for reports
@@ -79,4 +114,15 @@ export interface DocenteStats {
   tutoriasFinalizadas: number;
   promedioCalificacion: number;
   totalCalificaciones: number;
+}
+
+// Excel import interface
+export interface ExcelUserRow {
+  cedula: string;
+  nombres: string;
+  correo: string;
+  rol: string;
+  carrera: string;
+  nivel: string;
+  estado: string;
 }

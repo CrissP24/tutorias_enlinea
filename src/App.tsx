@@ -10,7 +10,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
+import ProfilePage from "./pages/ProfilePage";
+import CalendarPage from "./pages/CalendarPage";
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -42,7 +43,10 @@ const App = () => (
             {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+
+            {/* Profile - All authenticated users */}
+            <Route path="/perfil" element={<ProtectedRoute allowedRoles={['admin', 'docente', 'estudiante']}><ProfilePage /></ProtectedRoute>} />
+            <Route path="/calendario" element={<ProtectedRoute allowedRoles={['admin', 'docente', 'estudiante']}><CalendarPage /></ProtectedRoute>} />
 
             {/* Admin */}
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
