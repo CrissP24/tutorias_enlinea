@@ -134,10 +134,7 @@ const LoginPage: React.FC = () => {
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">
-                ¿No tienes cuenta?{' '}
-                <Link to="/register" className="font-medium text-primary hover:underline">
-                  Regístrate aquí
-                </Link>
+                Contacta al administrador para obtener credenciales de acceso
               </p>
             </CardFooter>
           </form>

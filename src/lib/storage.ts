@@ -1,11 +1,12 @@
 import CryptoJS from 'crypto-js';
-import type { User, Tutoria, Session, UserRole } from '@/types';
+import type { User, Tutoria, Session, UserRole, Notification, UserStatus } from '@/types';
 
 // Storage keys
 const STORAGE_KEYS = {
   USERS: 'tutorias_users',
   TUTORIAS: 'tutorias_data',
   SESSION: 'tutorias_session',
+  NOTIFICATIONS: 'tutorias_notifications',
 } as const;
 
 // Secret key for encryption (in production, this should be more secure)
@@ -50,13 +51,30 @@ export const getUserByEmail = (email: string): User | undefined => {
   return getUsers().find(user => user.email.toLowerCase() === email.toLowerCase());
 };
 
+export const getUserByCedula = (cedula: string): User | undefined => {
+  return getUsers().find(user => user.cedula === cedula);
+};
+
 export const getUsersByRole = (role: UserRole): User[] => {
-  return getUsers().filter(user => user.rol === role);
+  return getUsers().filter(user => user.rol === role && user.estado === 'activo');
+};
+
+export const getUsersByCarrera = (carrera: string): User[] => {
+  return getUsers().filter(user => user.carrera.toLowerCase() === carrera.toLowerCase());
+};
+
+export const getUsersByNivel = (nivel: string): User[] => {
+  return getUsers().filter(user => user.nivel === nivel);
 };
 
 export const createUser = (userData: Omit<User, 'id' | 'createdAt'>): User | null => {
   // Check if email already exists
   if (getUserByEmail(userData.email)) {
+    return null;
+  }
+
+  // Check if cedula already exists
+  if (getUserByCedula(userData.cedula)) {
     return null;
   }
 
@@ -72,7 +90,7 @@ export const createUser = (userData: Omit<User, 'id' | 'createdAt'>): User | nul
   return newUser;
 };
 
-export const updateUser = (id: string, updates: Partial<Omit<User, 'id' | 'createdAt'>>): User | null => {
+export const updateUser = (id: string, updates: Partial<Omit<User, 'id' | 'createdAt' | 'cedula'>>): User | null => {
   const users = getUsers();
   const index = users.findIndex(user => user.id === id);
   
@@ -103,6 +121,11 @@ export const deleteUser = (id: string): boolean => {
     t => t.estudianteId !== id && t.docenteId !== id
   );
   saveTutorias(filteredTutorias);
+
+  // Delete associated notifications
+  const notifications = getNotifications();
+  const filteredNotifications = notifications.filter(n => n.userId !== id);
+  saveNotifications(filteredNotifications);
   
   return true;
 };
@@ -175,6 +198,66 @@ export const deleteTutoria = (id: string): boolean => {
   return true;
 };
 
+// ==================== NOTIFICATIONS ====================
+
+export const getNotifications = (): Notification[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveNotifications = (notifications: Notification[]): void => {
+  localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifications));
+};
+
+export const getNotificationsByUser = (userId: string): Notification[] => {
+  return getNotifications()
+    .filter(n => n.userId === userId)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+};
+
+export const getUnreadNotificationsCount = (userId: string): number => {
+  return getNotifications().filter(n => n.userId === userId && !n.leido).length;
+};
+
+export const createNotification = (data: Omit<Notification, 'id' | 'fecha' | 'leido'>): Notification => {
+  const notifications = getNotifications();
+  
+  const newNotification: Notification = {
+    ...data,
+    id: generateId(),
+    leido: false,
+    fecha: new Date().toISOString(),
+  };
+
+  notifications.push(newNotification);
+  saveNotifications(notifications);
+  return newNotification;
+};
+
+export const markNotificationAsRead = (id: string): void => {
+  const notifications = getNotifications();
+  const index = notifications.findIndex(n => n.id === id);
+  
+  if (index !== -1) {
+    notifications[index].leido = true;
+    saveNotifications(notifications);
+  }
+};
+
+export const markAllNotificationsAsRead = (userId: string): void => {
+  const notifications = getNotifications();
+  notifications.forEach(n => {
+    if (n.userId === userId) {
+      n.leido = true;
+    }
+  });
+  saveNotifications(notifications);
+};
+
 // ==================== SESSION ====================
 
 export const getSession = (): Session | null => {
@@ -192,6 +275,14 @@ export const saveSession = (user: User): void => {
     loginAt: new Date().toISOString(),
   };
   localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+};
+
+export const updateSessionUser = (user: User): void => {
+  const session = getSession();
+  if (session) {
+    session.user = user;
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+  }
 };
 
 export const clearSession = (): void => {
@@ -213,34 +304,54 @@ export const initializeStorage = (): void => {
     const defaultUsers: User[] = [
       {
         id: generateId(),
+        cedula: '0000000001',
         nombre: 'Administrador',
         email: 'admin@tutorias.com',
         password: adminPassword,
         rol: 'admin',
+        carrera: 'Sistemas',
+        nivel: 'N/A',
+        estado: 'activo',
+        forcePasswordChange: false,
         createdAt: new Date().toISOString(),
       },
       {
         id: generateId(),
+        cedula: '1234567890',
         nombre: 'Dr. Carlos Rodríguez',
         email: 'carlos.docente@tutorias.com',
         password: encryptPassword('docente123'),
         rol: 'docente',
+        carrera: 'Ingeniería de Software',
+        nivel: 'N/A',
+        estado: 'activo',
+        forcePasswordChange: false,
         createdAt: new Date().toISOString(),
       },
       {
         id: generateId(),
+        cedula: '0987654321',
         nombre: 'Dra. María López',
         email: 'maria.docente@tutorias.com',
         password: encryptPassword('docente123'),
         rol: 'docente',
+        carrera: 'Ciencias de la Computación',
+        nivel: 'N/A',
+        estado: 'activo',
+        forcePasswordChange: false,
         createdAt: new Date().toISOString(),
       },
       {
         id: generateId(),
+        cedula: '1122334455',
         nombre: 'Juan Pérez',
         email: 'juan.estudiante@tutorias.com',
         password: encryptPassword('estudiante123'),
         rol: 'estudiante',
+        carrera: 'Ingeniería de Software',
+        nivel: '5to Semestre',
+        estado: 'activo',
+        forcePasswordChange: false,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -263,4 +374,15 @@ export const sanitizeInput = (input: string): string => {
 export const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
+};
+
+// Validate cedula format (numeric, 10 digits)
+export const isValidCedula = (cedula: string): boolean => {
+  const cedulaRegex = /^\d{10}$/;
+  return cedulaRegex.test(cedula);
+};
+
+// Validate password strength (min 8 characters)
+export const isValidPassword = (password: string): boolean => {
+  return password.length >= 8;
 };
