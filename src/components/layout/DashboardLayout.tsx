@@ -15,7 +15,9 @@ import {
   X,
   Home,
   User,
-  CalendarDays
+  CalendarDays,
+  School,
+  BookMarked
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -45,9 +47,22 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         return [
           { label: 'Dashboard', path: '/admin', icon: <LayoutDashboard className="h-5 w-5" /> },
           { label: 'Usuarios', path: '/admin/usuarios', icon: <Users className="h-5 w-5" /> },
+          { label: 'Carreras', path: '/admin/carreras', icon: <School className="h-5 w-5" /> },
+          { label: 'Materias', path: '/admin/materias', icon: <BookMarked className="h-5 w-5" /> },
           { label: 'Tutorías', path: '/admin/tutorias', icon: <BookOpen className="h-5 w-5" /> },
-          { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
+          { label: 'Períodos', path: '/admin/periodos', icon: <CalendarDays className="h-5 w-5" /> },
           { label: 'Reportes', path: '/admin/reportes', icon: <FileText className="h-5 w-5" /> },
+          { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
+          { label: 'Mi Perfil', path: '/perfil', icon: <User className="h-5 w-5" /> },
+        ];
+      case 'coordinador':
+        return [
+          { label: 'Dashboard', path: '/coordinador', icon: <LayoutDashboard className="h-5 w-5" /> },
+          { label: 'Materias', path: '/coordinador/materias', icon: <BookMarked className="h-5 w-5" /> },
+          { label: 'Carga Masiva', path: '/coordinador/carga-masiva', icon: <Users className="h-5 w-5" /> },
+          { label: 'Tutorías', path: '/coordinador/tutorias', icon: <BookOpen className="h-5 w-5" /> },
+          { label: 'Reportes', path: '/coordinador/reportes', icon: <FileText className="h-5 w-5" /> },
+          { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
           { label: 'Mi Perfil', path: '/perfil', icon: <User className="h-5 w-5" /> },
         ];
       case 'docente':
@@ -64,6 +79,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           { label: 'Dashboard', path: '/estudiante', icon: <LayoutDashboard className="h-5 w-5" /> },
           { label: 'Solicitar Tutoría', path: '/estudiante/solicitar', icon: <BookOpen className="h-5 w-5" /> },
           { label: 'Mis Tutorías', path: '/estudiante/historial', icon: <FileText className="h-5 w-5" /> },
+          { label: 'Reportes', path: '/estudiante/reportes', icon: <FileText className="h-5 w-5" /> },
           { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
           { label: 'Mi Perfil', path: '/perfil', icon: <User className="h-5 w-5" /> },
         ];
@@ -96,8 +112,12 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-            <GraduationCap className="h-6 w-6 text-primary-foreground" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-sm">
+            <img
+              src="/logo.jpg"
+              alt="Logo Tutorías Académicas"
+              className="h-full w-full object-cover"
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold text-sidebar-foreground">Tutorías</span>
@@ -130,10 +150,12 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <div className="border-t border-sidebar-border p-4">
           <div className="mb-4 flex items-center gap-3 rounded-lg bg-sidebar-accent/50 p-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-              {user?.nombre.charAt(0).toUpperCase()}
+              {user?.nombres ? user.nombres.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.nombre}</p>
+              <p className="truncate text-sm font-medium text-sidebar-foreground">
+                {user?.nombres || ''} {user?.apellidos || ''}
+              </p>
               <p className="text-xs text-sidebar-foreground/60">{getRoleName()}</p>
             </div>
           </div>

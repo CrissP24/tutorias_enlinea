@@ -33,9 +33,13 @@ const Index: React.FC = () => {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-sm">
+              <img
+                src="/logo.jpg"
+                alt="Logo Tutorías Académicas"
+                className="h-full w-full object-cover"
+              />
             </div>
             <span className="text-xl font-bold text-foreground">Tutorías Académicas</span>
           </Link>
@@ -120,11 +124,17 @@ const Index: React.FC = () => {
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden">
+                <img
+                  src="/logo.jpg"
+                  alt="Logo Tutorías Académicas"
+                  className="h-full w-full object-cover"
+                />
+              </div>
               <span className="font-semibold text-foreground">Tutorías Académicas</span>
             </div>
-            <p className="text-sm text-muted-foreground">© 2024 Tutorías Académicas. Todos los derechos reservados.</p>
+            <p className="text-sm text-muted-foreground">© 2026 Tutorías Académicas. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

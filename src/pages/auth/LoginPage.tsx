@@ -58,7 +58,7 @@ const LoginPage: React.FC = () => {
         <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-accent/5 blur-3xl" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md animate-scale-in">
+      <div className="relative z-10 w-full max-w-lg animate-scale-in">
         <Link 
           to="/" 
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -67,13 +67,22 @@ const LoginPage: React.FC = () => {
           Volver al inicio
         </Link>
 
-        <Card className="border-border/50 shadow-lg">
+        <Card className="border-border/50 shadow-2xl bg-card/95 backdrop-blur-sm">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary shadow-lg">
-              <GraduationCap className="h-8 w-8 text-primary-foreground" />
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl overflow-hidden shadow-xl border-4 border-primary/10 bg-gradient-to-br from-primary/5 to-accent/5">
+              <img
+                src="/logo.jpg"
+                alt="Logo Tutorías Académicas"
+                className="h-full w-full object-cover rounded-2xl"
+                onError={(e) => {
+                  // Fallback to icon if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement!.innerHTML = '<div class="flex h-20 w-20 items-center justify-center rounded-3xl gradient-primary shadow-xl"><svg class="h-12 w-12 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg></div>';
+                }}
+              />
             </div>
-            <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
+            <CardDescription className="text-base">
               Ingresa tus credenciales para acceder a la plataforma
             </CardDescription>
           </CardHeader>
@@ -114,10 +123,10 @@ const LoginPage: React.FC = () => {
 
               {/* Demo credentials hint */}
               <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-                <p className="font-medium mb-1">Credenciales de prueba:</p>
-                <p>Admin: admin@tutorias.com / admin123</p>
-                <p>Docente: carlos.docente@tutorias.com / docente123</p>
-                <p>Estudiante: juan.estudiante@tutorias.com / estudiante123</p>
+                  <p className="font-medium mb-1">Credenciales de prueba:</p>
+                  <p>Admin: admin@tutorias.com / admin123</p>
+                  <p>Docente: carlos.docente@tutorias.com / docente123</p>
+                  <p>Estudiante: juan.estudiante@tutorias.com / estudiante123</p>
               </div>
             </CardContent>
 
@@ -135,6 +144,9 @@ const LoginPage: React.FC = () => {
 
               <p className="text-center text-sm text-muted-foreground">
                 Contacta al administrador para obtener credenciales de acceso
+              </p>
+              <p className="text-center text-xs text-muted-foreground/70 mt-2">
+                © 2026 Tutorías Académicas. Todos los derechos reservados.
               </p>
             </CardFooter>
           </form>

@@ -17,10 +17,12 @@ const UserProfile: React.FC = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileFormData>({
-    nombre: user?.nombre || '',
+    nombres: user?.nombres || '',
+    apellidos: user?.apellidos || '',
     email: user?.email || '',
+    telefono: user?.telefono || '',
     carrera: user?.carrera || '',
-    nivel: user?.nivel || '',
+    semestre: user?.semestre || '',
   });
 
   const [passwordData, setPasswordData] = useState<PasswordChangeFormData>({
@@ -37,10 +39,12 @@ const UserProfile: React.FC = () => {
 
     try {
       const result = updateUser(user.id, {
-        nombre: profileData.nombre,
+        nombres: profileData.nombres,
+        apellidos: profileData.apellidos,
         email: profileData.email,
+        telefono: profileData.telefono,
         carrera: profileData.carrera,
-        nivel: profileData.nivel,
+        semestre: profileData.semestre,
       });
 
       if (result) {
@@ -133,6 +137,7 @@ const UserProfile: React.FC = () => {
   const getRoleName = (rol: string) => {
     switch (rol) {
       case 'admin': return 'Administrador';
+      case 'coordinador': return 'Coordinador';
       case 'docente': return 'Docente';
       case 'estudiante': return 'Estudiante';
       default: return rol;
@@ -181,11 +186,22 @@ const UserProfile: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nombre">Nombres Completos</Label>
+              <Label htmlFor="nombres">Nombres</Label>
               <Input
-                id="nombre"
-                value={profileData.nombre}
-                onChange={(e) => setProfileData({ ...profileData, nombre: e.target.value })}
+                id="nombres"
+                value={profileData.nombres}
+                onChange={(e) => setProfileData({ ...profileData, nombres: e.target.value })}
+                required
+                minLength={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="apellidos">Apellidos</Label>
+              <Input
+                id="apellidos"
+                value={profileData.apellidos}
+                onChange={(e) => setProfileData({ ...profileData, apellidos: e.target.value })}
                 required
                 minLength={2}
               />
@@ -202,6 +218,15 @@ const UserProfile: React.FC = () => {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="telefono">Teléfono</Label>
+              <Input
+                id="telefono"
+                value={profileData.telefono}
+                onChange={(e) => setProfileData({ ...profileData, telefono: e.target.value })}
+              />
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="carrera">Carrera</Label>
@@ -213,11 +238,11 @@ const UserProfile: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="nivel">Nivel / Semestre</Label>
+                <Label htmlFor="semestre">Semestre</Label>
                 <Input
-                  id="nivel"
-                  value={profileData.nivel}
-                  onChange={(e) => setProfileData({ ...profileData, nivel: e.target.value })}
+                  id="semestre"
+                  value={profileData.semestre}
+                  onChange={(e) => setProfileData({ ...profileData, semestre: e.target.value })}
                 />
               </div>
             </div>

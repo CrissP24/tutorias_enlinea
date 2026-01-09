@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { getUsers, createUser, updateUser, deleteUser, encryptPassword } from '@/lib/storage';
+import { getUsers, createUser, updateUser, deleteUser, encryptPassword, isValidCedulaEcuador } from '@/lib/storage';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,14 +25,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Edit, Trash2, Users, GraduationCap, UserCheck } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Users, GraduationCap, UserCheck, Users2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User, UserRole, UserStatus } from '@/types';
 import ExcelUpload from '@/components/admin/ExcelUpload';
 
 const AdminUsuarios: React.FC = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>(getUsers());
+  const [users, setUsers] = useState<User[]>(() => {
+    const allUsers = getUsers();
+    // Filtrar usuarios válidos al inicializar (con nombres y email)
+    return allUsers.filter(u => u && u.nombres && u.email);
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<UserRole | 'all'>('all');
   const [filterCarrera, setFilterCarrera] = useState<string>('all');
@@ -41,12 +45,16 @@ const AdminUsuarios: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     cedula: '',
-    nombre: '',
+    nombres: '',
+    apellidos: '',
     email: '',
     rol: '' as UserRole | '',
     carrera: '',
-    nivel: '',
+    semestre: '',
+    telefono: '',
     estado: 'activo' as UserStatus,
+    coordinadorCarrera: '',
+    carreraTutoria: '',
   });
 
   const carreras = useMemo(() => {
@@ -56,21 +64,42 @@ const AdminUsuarios: React.FC = () => {
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
+      if (!user) return false;
+      
+      const searchLower = searchTerm.toLowerCase();
       const matchesSearch = 
-        user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.cedula.includes(searchTerm);
+        (user.nombres || '').toLowerCase().includes(searchLower) ||
+        (user.apellidos || '').toLowerCase().includes(searchLower) ||
+        (user.email || '').toLowerCase().includes(searchLower) ||
+        (user.cedula || '').includes(searchTerm);
       const matchesRole = filterRole === 'all' || user.rol === filterRole;
-      const matchesCarrera = filterCarrera === 'all' || user.carrera === filterCarrera;
+      const matchesCarrera = filterCarrera === 'all' || (user.carrera || '') === filterCarrera;
       return matchesSearch && matchesRole && matchesCarrera;
     });
   }, [users, searchTerm, filterRole, filterCarrera]);
 
-  const refreshUsers = () => setUsers(getUsers());
+  const refreshUsers = () => {
+    const allUsers = getUsers();
+    // Filtrar usuarios válidos (con nombres y email)
+    const validUsers = allUsers.filter(u => u && u.nombres && u.email);
+    setUsers(validUsers);
+  };
 
   const openCreateDialog = () => {
     setSelectedUser(null);
-    setFormData({ cedula: '', nombre: '', email: '', rol: '', carrera: '', nivel: '', estado: 'activo' });
+    setFormData({ 
+      cedula: '', 
+      nombres: '', 
+      apellidos: '', 
+      email: '', 
+      rol: '', 
+      carrera: '', 
+      semestre: '', 
+      telefono: '',
+      estado: 'activo',
+      coordinadorCarrera: '',
+      carreraTutoria: '',
+    });
     setIsDialogOpen(true);
   };
 
@@ -78,12 +107,16 @@ const AdminUsuarios: React.FC = () => {
     setSelectedUser(user);
     setFormData({
       cedula: user.cedula,
-      nombre: user.nombre,
+      nombres: user.nombres,
+      apellidos: user.apellidos,
       email: user.email,
       rol: user.rol,
       carrera: user.carrera,
-      nivel: user.nivel,
+      semestre: user.semestre,
+      telefono: user.telefono,
       estado: user.estado,
+      coordinadorCarrera: user.coordinadorCarrera || '',
+      carreraTutoria: user.carreraTutoria || '',
     });
     setIsDialogOpen(true);
   };
@@ -101,14 +134,23 @@ const AdminUsuarios: React.FC = () => {
       return;
     }
 
+    if (!formData.nombres || !formData.apellidos) {
+      toast({ title: 'Error', description: 'Los nombres y apellidos son obligatorios', variant: 'destructive' });
+      return;
+    }
+
     if (selectedUser) {
       const updates: Partial<User> = {
-        nombre: formData.nombre,
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
         email: formData.email,
         rol: formData.rol as UserRole,
         carrera: formData.carrera,
-        nivel: formData.nivel,
+        semestre: formData.semestre,
+        telefono: formData.telefono,
         estado: formData.estado,
+        ...(formData.rol === 'coordinador' && { coordinadorCarrera: formData.coordinadorCarrera }),
+        ...(formData.rol === 'docente' && { carreraTutoria: formData.carreraTutoria }),
       };
 
       const result = updateUser(selectedUser.id, updates);
@@ -121,22 +163,26 @@ const AdminUsuarios: React.FC = () => {
         toast({ title: 'Error', description: 'El email ya está en uso.', variant: 'destructive' });
       }
     } else {
-      if (formData.cedula.length !== 10) {
-        toast({ title: 'Error', description: 'La cédula debe tener 10 dígitos.', variant: 'destructive' });
+      if (!isValidCedulaEcuador(formData.cedula)) {
+        toast({ title: 'Error', description: 'Cédula ecuatoriana inválida.', variant: 'destructive' });
         return;
       }
 
       // Password = cedula for new users
       const result = createUser({
         cedula: formData.cedula,
-        nombre: formData.nombre,
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
         email: formData.email,
         password: encryptPassword(formData.cedula),
         rol: formData.rol as UserRole,
         carrera: formData.carrera,
-        nivel: formData.nivel,
+        semestre: formData.semestre,
+        telefono: formData.telefono,
         estado: formData.estado,
         forcePasswordChange: true,
+        ...(formData.rol === 'coordinador' && { coordinadorCarrera: formData.coordinadorCarrera }),
+        ...(formData.rol === 'docente' && { carreraTutoria: formData.carreraTutoria }),
       });
 
       if (result) {
@@ -163,6 +209,7 @@ const AdminUsuarios: React.FC = () => {
   const getRoleIcon = (rol: UserRole) => {
     switch (rol) {
       case 'admin': return <Users className="h-4 w-4" />;
+      case 'coordinador': return <Users2 className="h-4 w-4" />;
       case 'docente': return <UserCheck className="h-4 w-4" />;
       case 'estudiante': return <GraduationCap className="h-4 w-4" />;
     }
@@ -171,6 +218,7 @@ const AdminUsuarios: React.FC = () => {
   const getRoleBadgeColor = (rol: UserRole) => {
     switch (rol) {
       case 'admin': return 'bg-destructive/10 text-destructive';
+      case 'coordinador': return 'bg-purple-100 text-purple-700';
       case 'docente': return 'bg-success/10 text-success';
       case 'estudiante': return 'bg-primary/10 text-primary';
     }
@@ -205,6 +253,7 @@ const AdminUsuarios: React.FC = () => {
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="coordinador">Coordinador</SelectItem>
                     <SelectItem value="docente">Docente</SelectItem>
                     <SelectItem value="estudiante">Estudiante</SelectItem>
                   </SelectContent>
@@ -227,9 +276,11 @@ const AdminUsuarios: React.FC = () => {
                     <thead>
                       <tr className="border-b border-border">
                         <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Cédula</th>
-                        <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Nombre</th>
+                        <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Nombre Completo</th>
                         <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Email</th>
+                        <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Teléfono</th>
                         <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Rol</th>
+                        <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Carrera</th>
                         <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Estado</th>
                         <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">Acciones</th>
                       </tr>
@@ -237,23 +288,25 @@ const AdminUsuarios: React.FC = () => {
                     <tbody>
                       {filteredUsers.map((user) => (
                         <tr key={user.id} className="border-b border-border last:border-0 hover:bg-muted/50">
-                          <td className="py-3 px-4 text-sm">{user.cedula}</td>
-                          <td className="py-3 px-4 font-medium">{user.nombre}</td>
-                          <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
+                          <td className="py-3 px-4 text-sm">{user.cedula || '-'}</td>
+                          <td className="py-3 px-4 font-medium">{(user.nombres || '')} {(user.apellidos || '')}</td>
+                          <td className="py-3 px-4 text-muted-foreground text-sm">{user.email || '-'}</td>
+                          <td className="py-3 px-4 text-sm">{user.telefono || '-'}</td>
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeColor(user.rol)}`}>
-                              {getRoleIcon(user.rol)}{user.rol}
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeColor(user.rol || 'estudiante')}`}>
+                              {getRoleIcon(user.rol || 'estudiante')}{user.rol || '-'}
                             </span>
                           </td>
+                          <td className="py-3 px-4 text-sm">{user.carrera || '-'}</td>
                           <td className="py-3 px-4">
-                            <span className={`text-xs px-2 py-1 rounded-full ${user.estado === 'activo' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                              {user.estado}
+                            <span className={`text-xs px-2 py-1 rounded-full ${(user.estado || 'activo') === 'activo' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                              {user.estado || 'activo'}
                             </span>
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="icon-sm" onClick={() => openEditDialog(user)}><Edit className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => openDeleteDialog(user)}><Trash2 className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}><Edit className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(user)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           </td>
                         </tr>
@@ -271,7 +324,7 @@ const AdminUsuarios: React.FC = () => {
         </Tabs>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-96 overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedUser ? 'Editar Usuario' : 'Nuevo Usuario'}</DialogTitle>
               <DialogDescription>{selectedUser ? 'Modifica los datos del usuario.' : 'La contraseña inicial será la cédula.'}</DialogDescription>
@@ -279,16 +332,26 @@ const AdminUsuarios: React.FC = () => {
             <form onSubmit={handleSubmit}>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Cédula</Label>
-                  <Input value={formData.cedula} onChange={(e) => setFormData({...formData, cedula: e.target.value})} disabled={!!selectedUser} required maxLength={10} />
+                  <Label>Cédula (Ecuador)</Label>
+                  <Input value={formData.cedula} onChange={(e) => setFormData({...formData, cedula: e.target.value})} disabled={!!selectedUser} required maxLength={10} placeholder="10 dígitos" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Nombre completo</Label>
-                  <Input value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} required />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nombres</Label>
+                    <Input value={formData.nombres} onChange={(e) => setFormData({...formData, nombres: e.target.value})} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Apellidos</Label>
+                    <Input value={formData.apellidos} onChange={(e) => setFormData({...formData, apellidos: e.target.value})} required />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
                   <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Teléfono</Label>
+                  <Input value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value})} placeholder="+593..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -297,6 +360,7 @@ const AdminUsuarios: React.FC = () => {
                       <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="coordinador">Coordinador</SelectItem>
                         <SelectItem value="docente">Docente</SelectItem>
                         <SelectItem value="estudiante">Estudiante</SelectItem>
                       </SelectContent>
@@ -313,16 +377,29 @@ const AdminUsuarios: React.FC = () => {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Carrera</Label>
-                    <Input value={formData.carrera} onChange={(e) => setFormData({...formData, carrera: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nivel</Label>
-                    <Input value={formData.nivel} onChange={(e) => setFormData({...formData, nivel: e.target.value})} />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Carrera</Label>
+                  <Input value={formData.carrera} onChange={(e) => setFormData({...formData, carrera: e.target.value})} />
                 </div>
+                {formData.rol !== 'admin' && (
+                  <div className="space-y-2">
+                    <Label>Semestre</Label>
+                    <Input value={formData.semestre} onChange={(e) => setFormData({...formData, semestre: e.target.value})} placeholder="Ej: 5to Semestre" />
+                  </div>
+                )}
+                {formData.rol === 'coordinador' && (
+                  <div className="space-y-2">
+                    <Label>Carrera a Coordinar</Label>
+                    <Input value={formData.coordinadorCarrera} onChange={(e) => setFormData({...formData, coordinadorCarrera: e.target.value})} placeholder="Misma carrera que arriba" />
+                  </div>
+                )}
+                {formData.rol === 'docente' && (
+                  <div className="space-y-2">
+                    <Label>Carrera para Tutorías</Label>
+                    <Input value={formData.carreraTutoria} onChange={(e) => setFormData({...formData, carreraTutoria: e.target.value})} placeholder="Carrera asignada para dar tutorías" />
+                    <p className="text-xs text-muted-foreground">El docente puede pertenecer a varias carreras, pero solo una para tutorías</p>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
@@ -336,7 +413,7 @@ const AdminUsuarios: React.FC = () => {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
-              <AlertDialogDescription>Se eliminará <strong>{selectedUser?.nombre}</strong> y sus tutorías.</AlertDialogDescription>
+              <AlertDialogDescription>Se eliminará <strong>{selectedUser?.nombres} {selectedUser?.apellidos}</strong> y sus tutorías.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>

@@ -10,6 +10,10 @@ import { BookOpen, Star, Clock, CheckCircle, ArrowRight } from 'lucide-react';
 const DocenteDashboard: React.FC = () => {
   const { user } = useAuth();
 
+  if (!user) {
+    return null;
+  }
+
   const stats = useMemo(() => {
     if (!user) return { total: 0, pendientes: 0, aceptadas: 0, finalizadas: 0, promedio: 0 };
     const tutorias = getTutoriasByDocente(user.id);
@@ -27,8 +31,8 @@ const DocenteDashboard: React.FC = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="rounded-2xl gradient-hero p-6 text-primary-foreground">
-          <h1 className="text-2xl font-bold">¡Bienvenido, {user?.nombre}!</h1>
-          <p className="mt-1 text-primary-foreground/80">Panel de docente</p>
+          <h1 className="text-2xl font-bold">¡Bienvenido, {user?.nombres}!</h1>
+          <p className="mt-1 text-primary-foreground/80">Gestiona tus tutorías y estudiantes</p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

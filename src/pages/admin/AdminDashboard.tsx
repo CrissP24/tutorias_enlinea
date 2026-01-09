@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUsers, getTutorias } from '@/lib/storage';
+import { getUsers, getTutorias, getPeriodos } from '@/lib/storage';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,11 +12,16 @@ import {
   TrendingUp,
   ArrowRight,
   UserCheck,
-  GraduationCap
+  GraduationCap,
+  Calendar
 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
 
   const stats = useMemo(() => {
     const users = getUsers();
@@ -24,6 +29,7 @@ const AdminDashboard: React.FC = () => {
 
     const estudiantes = users.filter(u => u.rol === 'estudiante').length;
     const docentes = users.filter(u => u.rol === 'docente').length;
+    const coordinadores = users.filter(u => u.rol === 'coordinador').length;
     const totalTutorias = tutorias.length;
     const finalizadas = tutorias.filter(t => t.estado === 'finalizada').length;
     
@@ -37,6 +43,7 @@ const AdminDashboard: React.FC = () => {
     return {
       estudiantes,
       docentes,
+      coordinadores,
       totalTutorias,
       finalizadas,
       promedioCalificacion,
@@ -52,8 +59,8 @@ const AdminDashboard: React.FC = () => {
       .slice(0, 5)
       .map(t => ({
         ...t,
-        estudiante: users.find(u => u.id === t.estudianteId)?.nombre || 'Desconocido',
-        docente: users.find(u => u.id === t.docenteId)?.nombre || 'Desconocido',
+        estudiante: users.find(u => u.id === t.estudianteId)?.nombres || 'Desconocido',
+        docente: users.find(u => u.id === t.docenteId)?.nombres || 'Desconocido',
       }));
   }, []);
 
@@ -73,11 +80,25 @@ const AdminDashboard: React.FC = () => {
       bgColor: 'bg-success/10',
     },
     {
+      title: 'Coordinadores',
+      value: stats.coordinadores,
+      icon: <Users className="h-5 w-5" />,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+    },
+    {
       title: 'Total Tutorías',
       value: stats.totalTutorias,
       icon: <BookOpen className="h-5 w-5" />,
       color: 'text-accent',
       bgColor: 'bg-accent/10',
+    },
+    {
+      title: 'Finalizadas',
+      value: stats.finalizadas,
+      icon: <BookOpen className="h-5 w-5" />,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
     },
     {
       title: 'Calificación Promedio',
@@ -93,14 +114,14 @@ const AdminDashboard: React.FC = () => {
       <div className="space-y-6">
         {/* Welcome */}
         <div className="rounded-2xl gradient-hero p-6 text-primary-foreground">
-          <h1 className="text-2xl font-bold">¡Bienvenido, {user?.nombre}!</h1>
+          <h1 className="text-2xl font-bold">¡Bienvenido, {user?.nombres}!</h1>
           <p className="mt-1 text-primary-foreground/80">
-            Aquí tienes un resumen de la actividad en la plataforma.
+            Gestiona toda la plataforma académica desde aquí.
           </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {statCards.map((stat, index) => (
             <Card key={index} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
               <CardContent className="flex items-center gap-4 p-6">
@@ -117,7 +138,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card className="transition-all hover:shadow-md hover:border-primary/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -125,7 +146,7 @@ const AdminDashboard: React.FC = () => {
                 Gestionar Usuarios
               </CardTitle>
               <CardDescription>
-                Crear, editar o eliminar usuarios del sistema.
+                Crear, editar o eliminar usuarios.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -145,7 +166,7 @@ const AdminDashboard: React.FC = () => {
                 Tutorías
               </CardTitle>
               <CardDescription>
-                Visualiza todas las tutorías del sistema.
+                Visualiza todas las tutorías.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -161,11 +182,31 @@ const AdminDashboard: React.FC = () => {
           <Card className="transition-all hover:shadow-md hover:border-primary/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="h-5 w-5 text-success" />
+                Períodos
+              </CardTitle>
+              <CardDescription>
+                Gestiona períodos académicos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/admin/periodos">
+                  Gestionar
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="transition-all hover:shadow-md hover:border-primary/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <TrendingUp className="h-5 w-5 text-success" />
                 Reportes
               </CardTitle>
               <CardDescription>
-                Genera reportes y estadísticas detalladas.
+                Estadísticas del sistema.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -183,7 +224,7 @@ const AdminDashboard: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>Actividad Reciente</CardTitle>
-            <CardDescription>Últimas tutorías registradas en el sistema</CardDescription>
+            <CardDescription>Últimas tutorías registradas</CardDescription>
           </CardHeader>
           <CardContent>
             {recentTutorias.length === 0 ? (

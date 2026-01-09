@@ -9,7 +9,10 @@ const DocenteCalificaciones: React.FC = () => {
   const { user } = useAuth();
   const tutorias = useMemo(() => user ? getTutoriasByDocente(user.id).filter(t => t.calificacion) : [], [user]);
   const users = useMemo(() => getUsers(), []);
-  const getUserName = (id: string) => users.find(u => u.id === id)?.nombre || 'Desconocido';
+  const getUserName = (id: string) => {
+    const u = users.find(u => u.id === id);
+    return u ? `${u.nombres} ${u.apellidos}` : 'Desconocido';
+  };
   const promedio = tutorias.length ? tutorias.reduce((a, t) => a + t.calificacion!, 0) / tutorias.length : 0;
 
   return (

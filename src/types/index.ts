@@ -1,5 +1,5 @@
 // User roles
-export type UserRole = 'admin' | 'docente' | 'estudiante';
+export type UserRole = 'admin' | 'coordinador' | 'docente' | 'estudiante';
 
 // User status
 export type UserStatus = 'activo' | 'inactivo';
@@ -8,14 +8,18 @@ export type UserStatus = 'activo' | 'inactivo';
 export interface User {
   id: string;
   cedula: string;
-  nombre: string;
+  nombres: string;
+  apellidos: string;
   email: string;
   password: string; // Encrypted
   rol: UserRole;
   carrera: string;
-  nivel: string;
+  semestre: string;
   estado: UserStatus;
+  telefono: string;
   forcePasswordChange: boolean;
+  coordinadorCarrera?: string; // Para coordinadores, qué carrera coordinan
+  carreraTutoria?: string; // Para docentes, carrera asignada para tutorías (pueden estar en varias pero una para tutorías)
   createdAt: string;
 }
 
@@ -38,15 +42,61 @@ export interface Tutoria {
   updatedAt: string;
 }
 
+// Period interface
+export interface Periodo {
+  id: string;
+  nombre: string;
+  fechaInicio: string;
+  fechaFin: string;
+  activo: boolean;
+  anio: number;
+  createdAt: string;
+}
+
+// Carrera interface
+export interface Carrera {
+  id: string;
+  nombre: string;
+  codigo: string;
+  descripcion?: string;
+  activa: boolean;
+  createdAt: string;
+}
+
+// Materia interface
+export interface Materia {
+  id: string;
+  nombre: string;
+  codigo: string;
+  carreraId: string;
+  descripcion?: string;
+  creditos?: number;
+  estado: 'pendiente' | 'aprobada' | 'rechazada'; // Para aprobación del administrador
+  coordinadorId?: string; // Coordinador que la creó
+  activa: boolean;
+  createdAt: string;
+}
+
+// Message interface - para chat entre docente y estudiante
+export interface Mensaje {
+  id: string;
+  tutoriaId: string;
+  remitente: string; // userId
+  contenido: string;
+  leido: boolean;
+  fecha: string;
+}
+
 // Notification interface
 export interface Notification {
   id: string;
   userId: string;
   mensaje: string;
-  tipo: 'solicitud' | 'aceptada' | 'rechazada' | 'reprogramada' | 'calificacion';
+  tipo: 'solicitud' | 'aceptada' | 'rechazada' | 'reprogramada' | 'calificacion' | 'mensaje';
   leido: boolean;
   fecha: string;
   tutoriaId?: string;
+  mensajeId?: string;
 }
 
 // Session interface
@@ -63,13 +113,15 @@ export interface LoginFormData {
 
 export interface RegisterFormData {
   cedula: string;
-  nombre: string;
+  nombres: string;
+  apellidos: string;
   email: string;
   password: string;
   confirmPassword: string;
   rol: UserRole;
   carrera: string;
-  nivel: string;
+  semestre: string;
+  telefono: string;
 }
 
 export interface TutoriaFormData {
@@ -86,10 +138,12 @@ export interface RatingFormData {
 }
 
 export interface ProfileFormData {
-  nombre: string;
+  nombres: string;
+  apellidos: string;
   email: string;
   carrera: string;
-  nivel: string;
+  semestre: string;
+  telefono: string;
 }
 
 export interface PasswordChangeFormData {

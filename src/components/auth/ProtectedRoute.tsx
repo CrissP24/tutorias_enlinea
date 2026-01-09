@@ -35,7 +35,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Redirect to appropriate dashboard based on role
     const dashboardPath = user.rol === 'admin' 
       ? '/admin' 
-      : user.rol === 'docente' 
+      : user.rol === 'coordinador' 
+        ? '/coordinador'
+        : user.rol === 'docente' 
         ? '/docente' 
         : '/estudiante';
     return <Navigate to={dashboardPath} replace />;

@@ -33,7 +33,7 @@ const AdminTutorias: React.FC = () => {
 
   const getUserName = (id: string) => {
     const user = users.find(u => u.id === id);
-    return user?.nombre || 'Desconocido';
+    return user ? `${user.nombres} ${user.apellidos}` : 'Desconocido';
   };
 
   const filteredTutorias = useMemo(() => {

@@ -112,10 +112,15 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+    font-size: 16px;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
+    color: rgb(var(--foreground));
   }
 }
 
@@ -123,6 +128,16 @@
   .glass-card {
     @apply bg-card/80 backdrop-blur-md border border-border/50 rounded-xl;
     box-shadow: var(--shadow-md);
+  }
+
+  .card {
+    @apply bg-card border border-border rounded-lg p-4;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-strong {
+    @apply bg-card border border-border rounded-xl p-6;
+    box-shadow: var(--shadow-lg);
   }
 
   .gradient-primary {
@@ -151,6 +166,65 @@
 
   .animate-scale-in {
     animation: scaleIn 0.3s ease-out;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-shadow transition-transform;
+  }
+
+  .btn-primary {
+    @apply btn text-white;
+    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%);
+    box-shadow: var(--shadow-glow);
+  }
+
+  .btn-outline {
+    @apply btn border border-border bg-transparent text-foreground;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-foreground/90 hover:bg-muted/50;
+    box-shadow: none;
+  }
+
+  /* Form elements */
+  .form-input {
+    @apply w-full rounded-md border border-border bg-input/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground;
+    box-shadow: none;
+    transition: box-shadow .15s ease, transform .06s ease;
+  }
+
+  .form-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px hsl(var(--ring) / 0.12);
+    transform: translateY(-1px);
+  }
+
+  /* Hero */
+  .hero {
+    @apply gradient-hero text-white rounded-2xl p-8 md:p-12 shadow-lg;
+    background-size: cover;
+  }
+
+  /* Sidebar helpers */
+  .sidebar {
+    background: color-mix(in srgb, hsl(var(--sidebar-background)) 92%, transparent);
+    color: rgb(var(--sidebar-foreground));
+    border-right: 1px solid hsl(var(--sidebar-border));
+  }
+
+  .sidebar .nav-item {
+    @apply px-4 py-3 hover:bg-sidebar/10 rounded-md text-sm;
+  }
+
+  /* Utility: container that complements Tailwind container */
+  .app-container {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 

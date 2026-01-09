@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
-import { createUser, encryptPassword, getUserByEmail, getUserByCedula, isValidEmail, isValidCedula } from '@/lib/storage';
+import { createUser, encryptPassword, getUserByEmail, getUserByCedula, isValidEmail, isValidCedula, getUsers } from '@/lib/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,15 +17,21 @@ interface UploadResult {
   error?: string;
 }
 
-const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
+const ExcelUploadCoordinador: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
+  const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<UploadResult[]>([]);
   const [showResults, setShowResults] = useState(false);
 
-  const validRoles: UserRole[] = ['admin', 'docente', 'estudiante'];
+  if (!user) {
+    return null;
+  }
+
+  const validRoles: UserRole[] = ['estudiante']; // Coordinador solo puede cargar estudiantes
   const validStatuses: UserStatus[] = ['activo', 'inactivo'];
+  const userCarrera = user.carrera || '';
 
   const validateRow = (row: ExcelUserRow, rowIndex: number): string | null => {
     if (!row.cedula) return `Fila ${rowIndex}: Cédula es requerida`;
@@ -34,7 +41,10 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
     if (!isValidEmail(row.correo)) return `Fila ${rowIndex}: Correo inválido`;
     if (!row.rol) return `Fila ${rowIndex}: Rol es requerido`;
     if (!validRoles.includes(row.rol.toLowerCase() as UserRole)) {
-      return `Fila ${rowIndex}: Rol inválido (debe ser admin, docente o estudiante)`;
+      return `Fila ${rowIndex}: Solo se pueden cargar estudiantes`;
+    }
+    if (row.carrera && row.carrera.toLowerCase() !== userCarrera.toLowerCase()) {
+      return `Fila ${rowIndex}: La carrera debe ser ${userCarrera}`;
     }
     if (row.estado && !validStatuses.includes(row.estado.toLowerCase() as UserStatus)) {
       return `Fila ${rowIndex}: Estado inválido (debe ser activo o inactivo)`;
@@ -51,7 +61,6 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       
-      // Look for "usuarios" sheet or use first sheet
       const sheetName = workbook.SheetNames.includes('usuarios') 
         ? 'usuarios' 
         : workbook.SheetNames[0];
@@ -59,7 +68,7 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json<ExcelUserRow>(worksheet, {
         header: ['cedula', 'nombres', 'correo', 'rol', 'carrera', 'nivel', 'estado'],
-        range: 1, // Skip header row
+        range: 1,
       });
 
       if (jsonData.length === 0) {
@@ -76,9 +85,8 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
 
       for (let i = 0; i < jsonData.length; i++) {
         const row = jsonData[i];
-        const rowNumber = i + 2; // Account for header row and 0-index
+        const rowNumber = i + 2;
 
-        // Validate row
         const validationError = validateRow(row, rowNumber);
         if (validationError) {
           uploadResults.push({
@@ -90,7 +98,6 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
           continue;
         }
 
-        // Check for duplicates
         const cedula = row.cedula.toString();
         if (getUserByCedula(cedula)) {
           uploadResults.push({
@@ -112,24 +119,24 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
           continue;
         }
 
-        // Parse nombres and apellidos from row.nombres (assuming format: "Nombres Apellidos")
-        const nombreCompleto = row.nombres.trim().split(' ');
+        // Parse nombres and apellidos
+        const nombreCompleto = (row.nombres || '').trim().split(' ').filter(Boolean);
         const nombres = nombreCompleto.slice(0, -1).join(' ') || nombreCompleto[0] || '';
         const apellidos = nombreCompleto.length > 1 ? nombreCompleto[nombreCompleto.length - 1] : '';
 
-        // Create user with cedula as initial password
+        // Create user - siempre con la carrera del coordinador
         const result = createUser({
           cedula,
-          nombres: nombres,
-          apellidos: apellidos,
-          email: row.correo.trim().toLowerCase(),
-          password: encryptPassword(cedula), // Password = cedula
-          rol: row.rol.toLowerCase() as UserRole,
-          carrera: row.carrera?.trim() || '',
-          semestre: row.nivel?.trim() || '',
+          nombres: nombres || 'Estudiante',
+          apellidos: apellidos || 'Sin Apellido',
+          email: (row.correo || '').trim().toLowerCase(),
+          password: encryptPassword(cedula),
+          rol: 'estudiante',
+          carrera: userCarrera, // Siempre la carrera del coordinador
+          semestre: (row.nivel || '').trim() || '',
           telefono: '',
           estado: (row.estado?.toLowerCase() as UserStatus) || 'activo',
-          forcePasswordChange: true, // Force password change on first login
+          forcePasswordChange: true,
         });
 
         if (result) {
@@ -156,7 +163,7 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
 
       toast({
         title: 'Procesamiento completado',
-        description: `${successCount} usuarios creados, ${errorCount} errores.`,
+        description: `${successCount} estudiantes creados, ${errorCount} errores.`,
         variant: errorCount > 0 ? 'destructive' : 'default',
       });
 
@@ -193,14 +200,14 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const downloadTemplate = () => {
     const template = [
       ['cedula', 'nombres', 'correo', 'rol', 'carrera', 'nivel', 'estado'],
-      ['1234567890', 'Juan Pérez García', 'juan.perez@institucion.edu', 'estudiante', 'Ingeniería de Software', '5to Semestre', 'activo'],
-      ['0987654321', 'María López Silva', 'maria.lopez@institucion.edu', 'docente', 'Ciencias de la Computación', 'N/A', 'activo'],
+      ['1234567890', 'Juan Pérez García', 'juan.perez@institucion.edu', 'estudiante', userCarrera, '5to Semestre', 'activo'],
+      ['0987654321', 'María López Silva', 'maria.lopez@institucion.edu', 'estudiante', userCarrera, '3er Semestre', 'activo'],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'usuarios');
-    XLSX.writeFile(wb, 'plantilla_usuarios.xlsx');
+    XLSX.writeFile(wb, `plantilla-estudiantes-${userCarrera}.xlsx`);
   };
 
   return (
@@ -208,14 +215,13 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5" />
-          Carga Masiva de Usuarios
+          Carga Masiva de Estudiantes - {userCarrera}
         </CardTitle>
         <CardDescription>
-          Sube un archivo Excel con los datos de los usuarios a registrar
+          Sube un archivo Excel con los datos de los estudiantes de tu carrera
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Template download */}
         <div className="rounded-lg border border-dashed border-border p-4 text-center">
           <FileSpreadsheet className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground mb-3">
@@ -227,7 +233,6 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
           </Button>
         </div>
 
-        {/* File upload */}
         <div className="space-y-2">
           <Input
             ref={fileInputRef}
@@ -255,24 +260,22 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
           </Button>
         </div>
 
-        {/* Format info */}
         <div className="rounded-lg bg-muted/50 p-4 text-sm">
           <h4 className="font-medium mb-2">Formato requerido:</h4>
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
             <li><strong>cedula:</strong> 10 dígitos numéricos</li>
-            <li><strong>nombres:</strong> Nombre completo</li>
+            <li><strong>nombres:</strong> Nombre completo (se separará en nombres y apellidos)</li>
             <li><strong>correo:</strong> Email válido</li>
-            <li><strong>rol:</strong> admin | coordinador | docente | estudiante</li>
-            <li><strong>carrera:</strong> Nombre de la carrera</li>
+            <li><strong>rol:</strong> estudiante (solo estudiantes)</li>
+            <li><strong>carrera:</strong> {userCarrera} (debe coincidir con tu carrera)</li>
             <li><strong>nivel:</strong> Semestre o nivel</li>
             <li><strong>estado:</strong> activo | inactivo</li>
           </ul>
           <p className="mt-2 text-xs text-muted-foreground">
-            La contraseña inicial será la cédula del usuario. Se forzará el cambio en el primer inicio de sesión en caso que se requiera.
+            La contraseña inicial será la cédula del usuario. Se forzará el cambio en el primer inicio de sesión.
           </p>
         </div>
 
-        {/* Results */}
         {showResults && results.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-medium">Resultados del procesamiento:</h4>
@@ -315,4 +318,5 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   );
 };
 
-export default ExcelUpload;
+export default ExcelUploadCoordinador;
+

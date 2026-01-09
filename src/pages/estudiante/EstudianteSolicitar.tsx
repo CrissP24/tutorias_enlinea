@@ -46,7 +46,7 @@ const EstudianteSolicitar: React.FC = () => {
                 <Select value={formData.docenteId} onValueChange={(v) => setFormData({ ...formData, docenteId: v })} required>
                   <SelectTrigger><SelectValue placeholder="Selecciona un docente" /></SelectTrigger>
                   <SelectContent>
-                    {docentes.map(d => <SelectItem key={d.id} value={d.id}>{d.nombre}</SelectItem>)}
+                    {docentes.map(d => <SelectItem key={d.id} value={d.id}>{d.nombres} {d.apellidos}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

@@ -280,11 +280,11 @@ const TutoriasCalendar: React.FC<TutoriasCalendarProps> = ({ filterByUser, filte
                           <p className="text-sm text-muted-foreground mt-1">
                             <span className="flex items-center gap-1">
                               <User className="h-3 w-3" />
-                              Docente: {docente?.nombre || 'N/A'}
+                              Docente: {docente ? `${docente.nombres} ${docente.apellidos}` : 'N/A'}
                             </span>
                             <span className="flex items-center gap-1 mt-0.5">
                               <BookOpen className="h-3 w-3" />
-                              Estudiante: {estudiante?.nombre || 'N/A'}
+                              Estudiante: {estudiante ? `${estudiante.nombres} ${estudiante.apellidos}` : 'N/A'}
                             </span>
                           </p>
                         </div>
@@ -333,11 +333,17 @@ const TutoriasCalendar: React.FC<TutoriasCalendarProps> = ({ filterByUser, filte
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Docente</Label>
-                  <p>{getUserById(selectedTutoria.docenteId)?.nombre || 'N/A'}</p>
+                  <p>{(() => {
+                    const docente = getUserById(selectedTutoria.docenteId);
+                    return docente ? `${docente.nombres} ${docente.apellidos}` : 'N/A';
+                  })()}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Estudiante</Label>
-                  <p>{getUserById(selectedTutoria.estudianteId)?.nombre || 'N/A'}</p>
+                  <p>{(() => {
+                    const estudiante = getUserById(selectedTutoria.estudianteId);
+                    return estudiante ? `${estudiante.nombres} ${estudiante.apellidos}` : 'N/A';
+                  })()}</p>
                 </div>
                 {selectedTutoria.calificacion && (
                   <div>

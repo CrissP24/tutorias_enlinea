@@ -18,6 +18,16 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsuarios from "./pages/admin/AdminUsuarios";
 import AdminTutorias from "./pages/admin/AdminTutorias";
 import AdminReportes from "./pages/admin/AdminReportes";
+import AdminPeriodos from "./pages/admin/AdminPeriodos";
+import AdminCarreras from "./pages/admin/AdminCarreras";
+import AdminMaterias from "./pages/admin/AdminMaterias";
+
+// Coordinador
+import CoordinadorDashboard from "./pages/coordinador/CoordinadorDashboard";
+import CoordinadorTutorias from "./pages/coordinador/CoordinadorTutorias";
+import CoordinadorReportes from "./pages/coordinador/CoordinadorReportes";
+import CoordinadorMaterias from "./pages/coordinador/CoordinadorMaterias";
+import CoordinadorCargaMasiva from "./pages/coordinador/CoordinadorCargaMasiva";
 
 // Docente
 import DocenteDashboard from "./pages/docente/DocenteDashboard";
@@ -29,6 +39,7 @@ import DocenteCalificaciones from "./pages/docente/DocenteCalificaciones";
 import EstudianteDashboard from "./pages/estudiante/EstudianteDashboard";
 import EstudianteSolicitar from "./pages/estudiante/EstudianteSolicitar";
 import EstudianteHistorial from "./pages/estudiante/EstudianteHistorial";
+import EstudianteReportes from "./pages/estudiante/EstudianteReportes";
 
 const queryClient = new QueryClient();
 
@@ -45,14 +56,24 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
 
             {/* Profile - All authenticated users */}
-            <Route path="/perfil" element={<ProtectedRoute allowedRoles={['admin', 'docente', 'estudiante']}><ProfilePage /></ProtectedRoute>} />
-            <Route path="/calendario" element={<ProtectedRoute allowedRoles={['admin', 'docente', 'estudiante']}><CalendarPage /></ProtectedRoute>} />
+            <Route path="/perfil" element={<ProtectedRoute allowedRoles={['admin', 'coordinador', 'docente', 'estudiante']}><ProfilePage /></ProtectedRoute>} />
+            <Route path="/calendario" element={<ProtectedRoute allowedRoles={['admin', 'coordinador', 'docente', 'estudiante']}><CalendarPage /></ProtectedRoute>} />
 
             {/* Admin */}
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsuarios /></ProtectedRoute>} />
+            <Route path="/admin/carreras" element={<ProtectedRoute allowedRoles={['admin']}><AdminCarreras /></ProtectedRoute>} />
+            <Route path="/admin/materias" element={<ProtectedRoute allowedRoles={['admin']}><AdminMaterias /></ProtectedRoute>} />
             <Route path="/admin/tutorias" element={<ProtectedRoute allowedRoles={['admin']}><AdminTutorias /></ProtectedRoute>} />
+            <Route path="/admin/periodos" element={<ProtectedRoute allowedRoles={['admin']}><AdminPeriodos /></ProtectedRoute>} />
             <Route path="/admin/reportes" element={<ProtectedRoute allowedRoles={['admin']}><AdminReportes /></ProtectedRoute>} />
+
+            {/* Coordinador */}
+            <Route path="/coordinador" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorDashboard /></ProtectedRoute>} />
+            <Route path="/coordinador/materias" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorMaterias /></ProtectedRoute>} />
+            <Route path="/coordinador/carga-masiva" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorCargaMasiva /></ProtectedRoute>} />
+            <Route path="/coordinador/tutorias" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorTutorias /></ProtectedRoute>} />
+            <Route path="/coordinador/reportes" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorReportes /></ProtectedRoute>} />
 
             {/* Docente */}
             <Route path="/docente" element={<ProtectedRoute allowedRoles={['docente']}><DocenteDashboard /></ProtectedRoute>} />
@@ -64,6 +85,7 @@ const App = () => (
             <Route path="/estudiante" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudianteDashboard /></ProtectedRoute>} />
             <Route path="/estudiante/solicitar" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudianteSolicitar /></ProtectedRoute>} />
             <Route path="/estudiante/historial" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudianteHistorial /></ProtectedRoute>} />
+            <Route path="/estudiante/reportes" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudianteReportes /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
