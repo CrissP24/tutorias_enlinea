@@ -11,10 +11,6 @@ const EstudianteReportes: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  if (!user) {
-    return null;
-  }
-
   const stats = useMemo(() => {
     if (!user) return { total: 0, pendientes: 0, aceptadas: 0, finalizadas: 0, promedio: 0 };
     const tutorias = getTutoriasByEstudiante(user.id);
@@ -35,6 +31,10 @@ const EstudianteReportes: React.FC = () => {
 
   const users = useMemo(() => getUsers(), []);
 
+  if (!user) {
+    return null;
+  }
+
   const downloadReport = () => {
     if (!user) return;
     let csv = 'REPORTE PERSONAL DE TUTORÍAS\n';
@@ -44,17 +44,17 @@ const EstudianteReportes: React.FC = () => {
     csv += `Carrera: ${user.carrera}\n`;
     csv += `Semestre: ${user.semestre}\n`;
     csv += `Fecha del Reporte: ${new Date().toLocaleDateString('es-ES')}\n\n`;
-    
+
     csv += 'RESUMEN\n';
     csv += `Total de Tutorías: ${stats.total}\n`;
     csv += `Pendientes: ${stats.pendientes}\n`;
     csv += `Aceptadas: ${stats.aceptadas}\n`;
     csv += `Finalizadas: ${stats.finalizadas}\n`;
     csv += `Calificación Promedio: ${stats.promedio.toFixed(2)}\n\n`;
-    
+
     csv += 'DETALLE DE TUTORÍAS\n';
     csv += 'Tema,Docente,Fecha,Hora,Estado,Calificación,Comentario\n';
-    
+
     tutorias.forEach(t => {
       const docente = users.find(u => u.id === t.docenteId);
       const docenteNombre = docente ? `${docente.nombres} ${docente.apellidos}` : 'Desconocido';

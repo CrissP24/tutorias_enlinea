@@ -15,10 +15,6 @@ const AdminReportes: React.FC = () => {
   const { toast } = useToast();
   const [selectedCarrera, setSelectedCarrera] = useState<string>('all');
 
-  if (!user) {
-    return null;
-  }
-
   const stats = useMemo(() => {
     const users = getUsers();
     const tutorias = getTutorias();
@@ -151,6 +147,10 @@ const AdminReportes: React.FC = () => {
       docenteStats: docenteStatsFiltradas,
     };
   }, [stats, selectedCarrera]);
+
+  if (!user) {
+    return null;
+  }
 
   const downloadReportePorCarrera = (carrera: string) => {
     const carreraStats = stats.statsPorCarrera.find(s => s.carrera === carrera);

@@ -23,7 +23,7 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const [results, setResults] = useState<UploadResult[]>([]);
   const [showResults, setShowResults] = useState(false);
 
-  const validRoles: UserRole[] = ['admin', 'docente', 'estudiante'];
+  const validRoles: UserRole[] = ['admin', 'coordinador', 'docente', 'estudiante'];
   const validStatuses: UserStatus[] = ['activo', 'inactivo'];
 
   const validateRow = (row: ExcelUserRow, rowIndex: number): string | null => {
@@ -262,7 +262,7 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
             <li><strong>cedula:</strong> 10 dígitos numéricos</li>
             <li><strong>nombres:</strong> Nombre completo</li>
             <li><strong>correo:</strong> Email válido</li>
-            <li><strong>rol:</strong> admin | coordinador | docente | estudiante</li>
+            <li><strong>rol:</strong> admin | docente | estudiante</li>
             <li><strong>carrera:</strong> Nombre de la carrera</li>
             <li><strong>nivel:</strong> Semestre o nivel</li>
             <li><strong>estado:</strong> activo | inactivo</li>

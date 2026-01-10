@@ -230,3 +230,4 @@ const AdminCarreras: React.FC = () => {
 
 export default AdminCarreras;
 
+
