@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { createUser, encryptPassword, getUserByEmail, getUserByCedula, isValidEmail, isValidCedula } from '@/lib/storage';
+import { createUser, encryptPassword, getUserByEmail, getUserByCedula, isValidEmail, isValidCedula, createNotificationByRole, getUserMetrics } from '@/lib/storage';
+import { createUserTemplate } from '@/lib/excelTemplate';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,31 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const validRoles: UserRole[] = ['admin', 'coordinador', 'docente', 'estudiante'];
   const validStatuses: UserStatus[] = ['activo', 'inactivo'];
 
+  // Función para parsear roles múltiples (ej: "coordinador,docente" o "docente,coordinador")
+  const parseRoles = (rolString: string): UserRole[] => {
+    const roles = rolString
+      .split(',')
+      .map(r => r.trim().toLowerCase())
+      .filter(r => validRoles.includes(r as UserRole)) as UserRole[];
+    
+    // Si es coordinador, SIEMPRE agregar también rol docente
+    if (roles.includes('coordinador')) {
+      // Si ya tiene ambos, retornar ambos
+      if (roles.includes('docente')) {
+        return ['coordinador', 'docente'];
+      }
+      // Si solo tiene coordinador, agregar docente automáticamente
+      return ['coordinador', 'docente'];
+    }
+    
+    // Si solo es docente, retornar solo docente
+    if (roles.includes('docente')) {
+      return ['docente'];
+    }
+    
+    return roles.length > 0 ? [roles[0]] : [];
+  };
+
   const validateRow = (row: ExcelUserRow, rowIndex: number): string | null => {
     if (!row.cedula) return `Fila ${rowIndex}: Cédula es requerida`;
     if (!isValidCedula(row.cedula.toString())) return `Fila ${rowIndex}: Cédula inválida (debe tener 10 dígitos)`;
@@ -33,9 +59,12 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
     if (!row.correo) return `Fila ${rowIndex}: Correo es requerido`;
     if (!isValidEmail(row.correo)) return `Fila ${rowIndex}: Correo inválido`;
     if (!row.rol) return `Fila ${rowIndex}: Rol es requerido`;
-    if (!validRoles.includes(row.rol.toLowerCase() as UserRole)) {
-      return `Fila ${rowIndex}: Rol inválido (debe ser admin, docente o estudiante)`;
+    
+    const parsedRoles = parseRoles(row.rol);
+    if (parsedRoles.length === 0) {
+      return `Fila ${rowIndex}: Rol inválido (debe ser: admin, coordinador, docente, estudiante, o coordinador,docente)`;
     }
+    
     if (row.estado && !validStatuses.includes(row.estado.toLowerCase() as UserStatus)) {
       return `Fila ${rowIndex}: Estado inválido (debe ser activo o inactivo)`;
     }
@@ -117,6 +146,11 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
         const nombres = nombreCompleto.slice(0, -1).join(' ') || nombreCompleto[0] || '';
         const apellidos = nombreCompleto.length > 1 ? nombreCompleto[nombreCompleto.length - 1] : '';
 
+        // Parse roles (puede ser múltiple: "coordinador,docente")
+        // parseRoles ya asegura que coordinador siempre tenga ambos roles
+        const userRoles = parseRoles(row.rol);
+        const finalRole: UserRole | UserRole[] = userRoles.length > 1 ? userRoles : userRoles[0];
+
         // Create user with cedula as initial password
         const result = createUser({
           cedula,
@@ -124,7 +158,7 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
           apellidos: apellidos,
           email: row.correo.trim().toLowerCase(),
           password: encryptPassword(cedula), // Password = cedula
-          rol: row.rol.toLowerCase() as UserRole,
+          rol: finalRole,
           carrera: row.carrera?.trim() || '',
           semestre: row.nivel?.trim() || '',
           telefono: '',
@@ -154,9 +188,21 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
       const successCount = uploadResults.filter(r => r.success).length;
       const errorCount = uploadResults.filter(r => !r.success).length;
 
+      // Crear notificación para administradores sobre carga masiva
+      if (successCount > 0) {
+        createNotificationByRole(
+          'admin',
+          `Se cargaron ${successCount} usuarios desde Excel`,
+          'usuarios'
+        );
+      }
+
+      // Obtener métricas actualizadas
+      const metrics = getUserMetrics();
+
       toast({
         title: 'Procesamiento completado',
-        description: `${successCount} usuarios creados, ${errorCount} errores.`,
+        description: `${successCount} usuarios creados, ${errorCount} errores. Total: ${metrics.total} usuarios en el sistema.`,
         variant: errorCount > 0 ? 'destructive' : 'default',
       });
 
@@ -191,16 +237,16 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   };
 
   const downloadTemplate = () => {
-    const template = [
-      ['cedula', 'nombres', 'correo', 'rol', 'carrera', 'nivel', 'estado'],
-      ['1234567890', 'Juan Pérez García', 'juan.perez@institucion.edu', 'estudiante', 'Ingeniería de Software', '5to Semestre', 'activo'],
-      ['0987654321', 'María López Silva', 'maria.lopez@institucion.edu', 'docente', 'Ciencias de la Computación', 'N/A', 'activo'],
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'usuarios');
-    XLSX.writeFile(wb, 'plantilla_usuarios.xlsx');
+    try {
+      createUserTemplate(false);
+    } catch (error) {
+      console.error('Error al descargar plantilla:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo descargar la plantilla. Por favor intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -262,13 +308,16 @@ const ExcelUpload: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
             <li><strong>cedula:</strong> 10 dígitos numéricos</li>
             <li><strong>nombres:</strong> Nombre completo</li>
             <li><strong>correo:</strong> Email válido</li>
-            <li><strong>rol:</strong> admin | docente | estudiante</li>
+            <li><strong>rol:</strong> admin | coordinador | docente | estudiante | coordinador,docente (roles múltiples separados por coma)</li>
             <li><strong>carrera:</strong> Nombre de la carrera</li>
             <li><strong>nivel:</strong> Semestre o nivel</li>
             <li><strong>estado:</strong> activo | inactivo</li>
           </ul>
           <p className="mt-2 text-xs text-muted-foreground">
             La contraseña inicial será la cédula del usuario. Se forzará el cambio en el primer inicio de sesión en caso que se requiera.
+          </p>
+          <p className="mt-2 text-xs text-primary font-semibold">
+            💡 Nota: Puedes asignar roles múltiples separados por coma (ej: coordinador,docente). Al iniciar sesión, el usuario podrá seleccionar qué panel usar.
           </p>
         </div>
 

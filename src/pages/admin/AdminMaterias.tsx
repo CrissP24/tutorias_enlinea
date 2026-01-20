@@ -25,8 +25,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, BookOpen, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, BookOpen, CheckCircle, XCircle, Clock, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import ExcelUploadMalla from '@/components/admin/ExcelUploadMalla';
 import type { Materia } from '@/types';
 
 const AdminMaterias: React.FC = () => {
@@ -108,8 +110,26 @@ const AdminMaterias: React.FC = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Gestión de Materias</h1>
-          <p className="text-muted-foreground">Aprueba o rechaza materias creadas por coordinadores</p>
+          <p className="text-muted-foreground">Gestiona materias y carga malla curricular completa</p>
         </div>
+
+        <Tabs defaultValue="materias" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="materias">
+              <BookOpen className="mr-2 h-4 w-4" />
+              Materias
+            </TabsTrigger>
+            <TabsTrigger value="malla">
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Cargar Malla Curricular
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="malla" className="space-y-4">
+            <ExcelUploadMalla onComplete={refreshMaterias} />
+          </TabsContent>
+
+          <TabsContent value="materias" className="space-y-4">
 
         <Card>
           <CardContent className="flex flex-col gap-4 p-4 sm:flex-row">
@@ -212,11 +232,17 @@ const AdminMaterias: React.FC = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
 };
 
 export default AdminMaterias;
+
+
+
+
 
 

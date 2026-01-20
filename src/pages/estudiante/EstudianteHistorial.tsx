@@ -216,7 +216,7 @@ const EstudianteHistorial: React.FC = () => {
 
         {/* Dialog Calificar */}
         <Dialog open={isRatingOpen} onOpenChange={setIsRatingOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Calificar Tutoría</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
               <div>
@@ -246,7 +246,7 @@ const EstudianteHistorial: React.FC = () => {
 
         {/* Dialog Editar */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Modificar Fecha y Hora</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
               <div>
@@ -282,7 +282,7 @@ const EstudianteHistorial: React.FC = () => {
 
         {/* Dialog Mensajes */}
         <Dialog open={isMessagesOpen} onOpenChange={setIsMessagesOpen}>
-          <DialogContent className="max-h-96 overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Conversación - {selectedTutoria?.tema}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
               <div className="bg-gray-50 p-3 rounded max-h-48 overflow-y-auto space-y-2 mb-4">

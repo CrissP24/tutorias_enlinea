@@ -9,6 +9,10 @@ interface StatusBadgeProps {
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' }) => {
   const statusConfig = {
+    Solicitada: {
+      label: 'Solicitada',
+      className: 'bg-accent/10 text-accent border-accent/20',
+    },
     pendiente: {
       label: 'Pendiente',
       className: 'bg-accent/10 text-accent border-accent/20',
@@ -27,7 +31,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
     },
   };
 
-  const config = statusConfig[status];
+  // Normalizar estado: 'Solicitada' -> 'pendiente' para compatibilidad
+  const normalizedStatus = status === 'Solicitada' ? 'pendiente' : status;
+  const config = statusConfig[status] || statusConfig[normalizedStatus] || statusConfig.pendiente;
 
   return (
     <span

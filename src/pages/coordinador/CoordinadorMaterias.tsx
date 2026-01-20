@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMaterias, getCarreras, createMateria, getUsers } from '@/lib/storage';
+import { getMaterias, getCarreras, createMateria, getUsers, getMateriaByCodigo, getSemestres, getCarreraById } from '@/lib/storage';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import type { Materia } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,44 +34,57 @@ const CoordinadorMaterias: React.FC = () => {
   const [formData, setFormData] = useState({
     nombre: '',
     codigo: '',
-    carreraId: '',
+    semestreId: '',
     descripcion: '',
     creditos: 0,
   });
 
-  const carreras = useMemo(() => {
-    // El coordinador solo puede crear materias para su carrera
-    const userCarrera = getUsers().find(u => u.id === user?.id)?.carrera;
-    return getCarreras().filter(c => c.nombre === userCarrera && c.activa);
+  // Obtener la carrera del coordinador (automática)
+  const coordinadorCarrera = useMemo(() => {
+    if (!user || !user.carrera) return null;
+    const carreras = getCarreras();
+    // Buscar por nombre del campo carrera del usuario
+    return carreras.find(c => c.nombre === user.carrera || c.id === user.carrera);
   }, [user]);
 
+  const semestres = useMemo(() => getSemestres().filter(s => s.activo), []);
+
   const materiasCarrera = useMemo(() => {
-    const userCarrera = getUsers().find(u => u.id === user?.id)?.carrera;
-    const carrera = carreras.find(c => c.nombre === userCarrera);
-    if (!carrera) return [];
-    return materias.filter(m => m.carreraId === carrera.id);
-  }, [materias, carreras, user]);
+    if (!coordinadorCarrera) return [];
+    return materias.filter(m => m.carreraId === coordinadorCarrera.id);
+  }, [materias, coordinadorCarrera]);
 
   const openCreateDialog = () => {
-    const userCarrera = getUsers().find(u => u.id === user?.id)?.carrera;
-    const carrera = carreras.find(c => c.nombre === userCarrera);
-    setFormData({ nombre: '', codigo: '', carreraId: carrera?.id || '', descripcion: '', creditos: 0 });
+    setFormData({ nombre: '', codigo: '', semestreId: '', descripcion: '', creditos: 0 });
     setIsDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nombre || !formData.codigo || !formData.carreraId) {
-      toast({ title: 'Error', description: 'El nombre, código y carrera son obligatorios', variant: 'destructive' });
+    if (!formData.nombre || !formData.codigo || !formData.semestreId) {
+      toast({ title: 'Error', description: 'El nombre, código y semestre son obligatorios', variant: 'destructive' });
+      return;
+    }
+
+    if (!coordinadorCarrera) {
+      toast({ title: 'Error', description: 'No se pudo determinar tu carrera. Contacta al administrador.', variant: 'destructive' });
+      return;
+    }
+
+    // Validar código único
+    const codigoExistente = getMateriaByCodigo(formData.codigo);
+    if (codigoExistente) {
+      toast({ title: 'Error', description: 'El código de materia ya existe. Por favor usa otro código.', variant: 'destructive' });
       return;
     }
 
     const result = createMateria({
       nombre: formData.nombre,
-      codigo: formData.codigo,
-      carreraId: formData.carreraId,
-      descripcion: formData.descripcion,
+      codigo: formData.codigo.toUpperCase(),
+      carreraId: coordinadorCarrera.id, // Se asigna automáticamente según la carrera del coordinador
+      semestreId: formData.semestreId,
+      descripcion: formData.descripcion || undefined,
       creditos: formData.creditos || undefined,
       estado: 'pendiente', // Pendiente de aprobación del administrador
       coordinadorId: user?.id,
@@ -82,11 +95,14 @@ const CoordinadorMaterias: React.FC = () => {
       toast({ title: 'Materia creada', description: 'La materia ha sido creada y está pendiente de aprobación del administrador.' });
       setMaterias(getMaterias());
       setIsDialogOpen(false);
+      setFormData({ nombre: '', codigo: '', semestreId: '', descripcion: '', creditos: 0 });
+    } else {
+      toast({ title: 'Error', description: 'No se pudo crear la materia. Intenta nuevamente.', variant: 'destructive' });
     }
   };
 
   const getCarreraNombre = (carreraId: string) => {
-    const carrera = carreras.find(c => c.id === carreraId);
+    const carrera = getCarreraById(carreraId);
     return carrera?.nombre || 'Desconocida';
   };
 
@@ -152,27 +168,47 @@ const CoordinadorMaterias: React.FC = () => {
         </Card>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nueva Materia</DialogTitle>
               <DialogDescription>La materia quedará pendiente de aprobación del administrador.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="space-y-4 py-4">
+                {/* Carrera - No editable, automática */}
                 <div className="space-y-2">
-                  <Label>Nombre de la Materia</Label>
+                  <Label>Carrera</Label>
+                  <Input 
+                    value={coordinadorCarrera?.nombre || 'No asignada'} 
+                    disabled 
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    La carrera se asigna automáticamente según tu perfil de coordinador
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Nombre de la Materia <span className="text-destructive">*</span></Label>
                   <Input value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Código</Label>
-                  <Input value={formData.codigo} onChange={(e) => setFormData({...formData, codigo: e.target.value.toUpperCase()})} required placeholder="Ej: MAT101" />
+                  <Label>Código <span className="text-destructive">*</span></Label>
+                  <Input 
+                    value={formData.codigo} 
+                    onChange={(e) => setFormData({...formData, codigo: e.target.value.toUpperCase()})} 
+                    required 
+                    placeholder="Ej: MAT101" 
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    El código debe ser único en el sistema
+                  </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Carrera</Label>
-                  <Select value={formData.carreraId} onValueChange={(value) => setFormData({...formData, carreraId: value})} required>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar carrera" /></SelectTrigger>
+                  <Label>Semestre <span className="text-destructive">*</span></Label>
+                  <Select value={formData.semestreId} onValueChange={(value) => setFormData({...formData, semestreId: value})} required>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar semestre" /></SelectTrigger>
                     <SelectContent>
-                      {carreras.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                      {semestres.map(s => <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

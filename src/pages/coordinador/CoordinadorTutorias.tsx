@@ -169,7 +169,7 @@ const CoordinadorTutorias = () => {
 
         {/* Dialog de Detalles */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             {selectedTutoria && (() => {
               const docente = getUsers().find(u => u.id === selectedTutoria.docenteId);
               const estudiante = getUsers().find(u => u.id === selectedTutoria.estudianteId);

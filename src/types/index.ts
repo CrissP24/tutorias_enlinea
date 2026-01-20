@@ -12,25 +12,26 @@ export interface User {
   apellidos: string;
   email: string;
   password: string; // Encrypted
-  rol: UserRole;
+  rol: UserRole | UserRole[]; // Permite múltiples roles
   carrera: string;
-  semestre: string;
+  semestre: string; // Para estudiantes: semestre actual. Para coordinadores: NO aplica
   estado: UserStatus;
   telefono: string;
   forcePasswordChange: boolean;
-  coordinadorCarrera?: string; // Para coordinadores, qué carrera coordinan
-  carreraTutoria?: string; // Para docentes, carrera asignada para tutorías (pueden estar en varias pero una para tutorías)
+  coordinadorCarrera?: string; // Para coordinadores, qué carrera coordinan (ID de carrera)
   createdAt: string;
 }
 
 // Tutoring status
-export type TutoriaStatus = 'pendiente' | 'aceptada' | 'rechazada' | 'finalizada';
+export type TutoriaStatus = 'Solicitada' | 'pendiente' | 'aceptada' | 'rechazada' | 'finalizada';
 
 // Tutoring interface
 export interface Tutoria {
   id: string;
   estudianteId: string;
   docenteId: string;
+  materiaId: string; // Materia solicitada
+  semestreId: string; // Semestre del estudiante
   tema: string;
   descripcion: string;
   fecha: string;
@@ -63,17 +64,44 @@ export interface Carrera {
   createdAt: string;
 }
 
-// Materia interface
+// Semestre interface
+export interface Semestre {
+  id: string;
+  nombre: string; // Ej: "1er Semestre", "2do Semestre", etc.
+  numero: number; // 1, 2, 3, etc.
+  activo: boolean;
+  createdAt: string;
+}
+
+// Unidad académica
+export type UnidadAcademica = 'Básica' | 'Profesional' | 'Titulación';
+
+// Materia interface - Malla Curricular
 export interface Materia {
   id: string;
   nombre: string;
   codigo: string;
   carreraId: string;
+  semestreId: string; // Semestre al que pertenece la materia (puede ser numérico o "Final")
   descripcion?: string;
   creditos?: number;
+  horas?: number; // Horas totales de la materia
+  unidad?: UnidadAcademica; // Básica, Profesional, Titulación
+  prerequisitos?: string[]; // Array de códigos de materias previas
   estado: 'pendiente' | 'aprobada' | 'rechazada'; // Para aprobación del administrador
   coordinadorId?: string; // Coordinador que la creó
   activa: boolean;
+  createdAt: string;
+}
+
+// Relación Docente-Materia-Semestre
+export interface DocenteMateriaSemestre {
+  id: string;
+  docenteId: string;
+  materiaId: string;
+  semestreId: string;
+  carreraId: string; // Carrera del docente
+  activo: boolean;
   createdAt: string;
 }
 
@@ -92,16 +120,34 @@ export interface Notification {
   id: string;
   userId: string;
   mensaje: string;
-  tipo: 'solicitud' | 'aceptada' | 'rechazada' | 'reprogramada' | 'calificacion' | 'mensaje';
+  tipo: 'solicitud' | 'aceptada' | 'rechazada' | 'reprogramada' | 'calificacion' | 'mensaje' | 'pdf' | 'usuarios';
   leido: boolean;
   fecha: string;
   tutoriaId?: string;
   mensajeId?: string;
+  pdfId?: string;
+  rolDestino?: UserRole; // Para notificaciones basadas en rol
+  carreraDestino?: string; // Para notificaciones basadas en carrera
+}
+
+// PDF interface - Solo metadata, archivos no se almacenan en LocalStorage
+export interface PDF {
+  id: string;
+  nombre: string;
+  carrera: string; // ID de la carrera
+  rolSubida: UserRole; // Rol del usuario que subió el PDF
+  usuarioSubida: string; // ID del usuario que subió el PDF
+  fecha: string;
+  nombreArchivo: string; // Nombre original del archivo
+  tamaño?: number; // Tamaño en bytes
+  descripcion?: string; // Descripción opcional
+  activo: boolean; // Para activar/desactivar PDFs sin eliminarlos
 }
 
 // Session interface
 export interface Session {
   user: User;
+  activeRole?: UserRole; // Rol activo cuando el usuario tiene múltiples roles
   loginAt: string;
 }
 
@@ -125,6 +171,7 @@ export interface RegisterFormData {
 }
 
 export interface TutoriaFormData {
+  materiaId: string;
   docenteId: string;
   tema: string;
   descripcion: string;
@@ -179,4 +226,25 @@ export interface ExcelUserRow {
   carrera: string;
   nivel: string;
   estado: string;
+}
+
+// Excel Malla Curricular interface
+export interface ExcelMallaRow {
+  carrera: string;
+  unidad: string;
+  semestre: string;
+  codigoAsignatura: string;
+  nombreAsignatura: string;
+  creditos: string | number;
+  horas: string | number;
+  prerequisitos: string;
+}
+
+// User metrics interface
+export interface UserMetrics {
+  total: number;
+  porRol: Record<UserRole, number>;
+  porCarrera: Record<string, number>;
+  activos: number;
+  inactivos: number;
 }

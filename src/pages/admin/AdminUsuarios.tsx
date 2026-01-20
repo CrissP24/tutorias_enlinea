@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { getUsers, createUser, updateUser, deleteUser, encryptPassword, isValidCedulaEcuador } from '@/lib/storage';
+import { getUsers, createUser, updateUser, deleteUser, encryptPassword, isValidCedulaEcuador, getCarreras, getSemestres } from '@/lib/storage';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,13 +54,10 @@ const AdminUsuarios: React.FC = () => {
     telefono: '',
     estado: 'activo' as UserStatus,
     coordinadorCarrera: '',
-    carreraTutoria: '',
   });
 
-  const carreras = useMemo(() => {
-    const uniqueCarreras = [...new Set(users.map(u => u.carrera).filter(Boolean))];
-    return uniqueCarreras;
-  }, [users]);
+  const carreras = useMemo(() => getCarreras().filter(c => c.activa), []);
+  const semestres = useMemo(() => getSemestres().filter(s => s.activo), []);
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
@@ -72,7 +69,11 @@ const AdminUsuarios: React.FC = () => {
         (user.apellidos || '').toLowerCase().includes(searchLower) ||
         (user.email || '').toLowerCase().includes(searchLower) ||
         (user.cedula || '').includes(searchTerm);
-      const matchesRole = filterRole === 'all' || user.rol === filterRole;
+      
+      // Handle multiple roles
+      const userRoles = Array.isArray(user.rol) ? user.rol : [user.rol];
+      const matchesRole = filterRole === 'all' || userRoles.includes(filterRole);
+      
       const matchesCarrera = filterCarrera === 'all' || (user.carrera || '') === filterCarrera;
       return matchesSearch && matchesRole && matchesCarrera;
     });
@@ -98,7 +99,6 @@ const AdminUsuarios: React.FC = () => {
       telefono: '',
       estado: 'activo',
       coordinadorCarrera: '',
-      carreraTutoria: '',
     });
     setIsDialogOpen(true);
   };
@@ -110,13 +110,12 @@ const AdminUsuarios: React.FC = () => {
       nombres: user.nombres,
       apellidos: user.apellidos,
       email: user.email,
-      rol: user.rol,
+      rol: Array.isArray(user.rol) ? user.rol[0] : user.rol, // Si tiene múltiples roles, tomar el primero
       carrera: user.carrera,
       semestre: user.semestre,
       telefono: user.telefono,
       estado: user.estado,
       coordinadorCarrera: user.coordinadorCarrera || '',
-      carreraTutoria: user.carreraTutoria || '',
     });
     setIsDialogOpen(true);
   };
@@ -146,11 +145,11 @@ const AdminUsuarios: React.FC = () => {
         email: formData.email,
         rol: formData.rol as UserRole,
         carrera: formData.carrera,
-        semestre: formData.semestre,
+        semestre: formData.rol === 'coordinador' ? 'N/A' : formData.semestre, // Coordinador NO tiene semestre
         telefono: formData.telefono,
         estado: formData.estado,
         ...(formData.rol === 'coordinador' && { coordinadorCarrera: formData.coordinadorCarrera }),
-        ...(formData.rol === 'docente' && { carreraTutoria: formData.carreraTutoria }),
+        // Docente NO tiene campo carreraTutoria según correcciones
       };
 
       const result = updateUser(selectedUser.id, updates);
@@ -168,6 +167,11 @@ const AdminUsuarios: React.FC = () => {
         return;
       }
 
+      // Si es coordinador, automáticamente tiene ambos roles (coordinador y docente)
+      const userRole: UserRole | UserRole[] = formData.rol === 'coordinador' 
+        ? ['coordinador', 'docente'] 
+        : (formData.rol as UserRole);
+
       // Password = cedula for new users
       const result = createUser({
         cedula: formData.cedula,
@@ -175,14 +179,14 @@ const AdminUsuarios: React.FC = () => {
         apellidos: formData.apellidos,
         email: formData.email,
         password: encryptPassword(formData.cedula),
-        rol: formData.rol as UserRole,
+        rol: userRole,
         carrera: formData.carrera,
-        semestre: formData.semestre,
+        semestre: formData.rol === 'coordinador' ? 'N/A' : formData.semestre, // Coordinador NO tiene semestre
         telefono: formData.telefono,
         estado: formData.estado,
         forcePasswordChange: true,
         ...(formData.rol === 'coordinador' && { coordinadorCarrera: formData.coordinadorCarrera }),
-        ...(formData.rol === 'docente' && { carreraTutoria: formData.carreraTutoria }),
+        // Docente NO tiene campo carreraTutoria según correcciones
       });
 
       if (result) {
@@ -262,7 +266,7 @@ const AdminUsuarios: React.FC = () => {
                   <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Carrera" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas las carreras</SelectItem>
-                    {carreras.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {carreras.map(c => <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </CardContent>
@@ -293,9 +297,16 @@ const AdminUsuarios: React.FC = () => {
                           <td className="py-3 px-4 text-muted-foreground text-sm">{user.email || '-'}</td>
                           <td className="py-3 px-4 text-sm">{user.telefono || '-'}</td>
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeColor(user.rol || 'estudiante')}`}>
-                              {getRoleIcon(user.rol || 'estudiante')}{user.rol || '-'}
-                            </span>
+                            {(() => {
+                              const userRoles = Array.isArray(user.rol) ? user.rol : [user.rol];
+                              const displayRole = userRoles[0] || 'estudiante';
+                              return (
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeColor(displayRole)}`}>
+                                  {getRoleIcon(displayRole)}{displayRole}
+                                  {userRoles.length > 1 && ` (+${userRoles.length - 1})`}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="py-3 px-4 text-sm">{user.carrera || '-'}</td>
                           <td className="py-3 px-4">
@@ -324,7 +335,7 @@ const AdminUsuarios: React.FC = () => {
         </Tabs>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-h-96 overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedUser ? 'Editar Usuario' : 'Nuevo Usuario'}</DialogTitle>
               <DialogDescription>{selectedUser ? 'Modifica los datos del usuario.' : 'La contraseña inicial será la cédula.'}</DialogDescription>
@@ -379,27 +390,44 @@ const AdminUsuarios: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Carrera</Label>
-                  <Input value={formData.carrera} onChange={(e) => setFormData({...formData, carrera: e.target.value})} />
+                  <Select value={formData.carrera} onValueChange={(value) => setFormData({...formData, carrera: value})}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar carrera" /></SelectTrigger>
+                    <SelectContent>
+                      {carreras.map(c => <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-                {formData.rol !== 'admin' && (
+                {/* Coordinador NO tiene semestre */}
+                {formData.rol !== 'admin' && formData.rol !== 'coordinador' && (
                   <div className="space-y-2">
                     <Label>Semestre</Label>
-                    <Input value={formData.semestre} onChange={(e) => setFormData({...formData, semestre: e.target.value})} placeholder="Ej: 5to Semestre" />
+                    <Select value={formData.semestre} onValueChange={(value) => setFormData({...formData, semestre: value})}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar semestre" /></SelectTrigger>
+                      <SelectContent>
+                        {semestres.map(s => <SelectItem key={s.id} value={s.nombre}>{s.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
                 {formData.rol === 'coordinador' && (
                   <div className="space-y-2">
-                    <Label>Carrera a Coordinar</Label>
-                    <Input value={formData.coordinadorCarrera} onChange={(e) => setFormData({...formData, coordinadorCarrera: e.target.value})} placeholder="Misma carrera que arriba" />
+                    <Label>Carrera a Coordinar <span className="text-destructive">*</span></Label>
+                    <Select 
+                      value={formData.coordinadorCarrera} 
+                      onValueChange={(value) => setFormData({...formData, coordinadorCarrera: value})}
+                      required
+                    >
+                      <SelectTrigger><SelectValue placeholder="Seleccionar carrera a coordinar" /></SelectTrigger>
+                      <SelectContent>
+                        {carreras.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Selecciona la carrera que coordinará este usuario
+                    </p>
                   </div>
                 )}
-                {formData.rol === 'docente' && (
-                  <div className="space-y-2">
-                    <Label>Carrera para Tutorías</Label>
-                    <Input value={formData.carreraTutoria} onChange={(e) => setFormData({...formData, carreraTutoria: e.target.value})} placeholder="Carrera asignada para dar tutorías" />
-                    <p className="text-xs text-muted-foreground">El docente puede pertenecer a varias carreras, pero solo una para tutorías</p>
-                  </div>
-                )}
+                {/* Docente NO tiene campo "Carrera para Tutorías" según correcciones */}
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>

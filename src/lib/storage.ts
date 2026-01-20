@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js';
-import type { User, Tutoria, Session, UserRole, Notification, Periodo, Mensaje, UserStatus, Carrera, Materia } from '@/types';
+import type { User, Tutoria, Session, UserRole, Notification, Periodo, Mensaje, UserStatus, Carrera, Materia, Semestre, DocenteMateriaSemestre, PDF, UserMetrics } from '@/types';
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -11,6 +11,9 @@ const STORAGE_KEYS = {
   MENSAJES: 'tutorias_mensajes',
   CARRERAS: 'tutorias_carreras',
   MATERIAS: 'tutorias_materias',
+  SEMESTRES: 'tutorias_semestres',
+  DOCENTE_MATERIA_SEMESTRE: 'tutorias_docente_materia_semestre',
+  PDFS: 'tutorias_pdfs',
 } as const;
 
 // Secret key for encryption (in production, this should be more secure)
@@ -167,6 +170,7 @@ export const createTutoria = (data: Omit<Tutoria, 'id' | 'createdAt' | 'updatedA
   
   const newTutoria: Tutoria = {
     ...data,
+    estado: data.estado || 'Solicitada', // Estado inicial por defecto
     id: generateId(),
     createdAt: now,
     updatedAt: now,
@@ -220,7 +224,8 @@ export const saveNotifications = (notifications: Notification[]): void => {
 export const getNotificationsByUser = (userId: string): Notification[] => {
   return getNotifications()
     .filter(n => n.userId === userId)
-    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .slice(0, 10); // Solo últimas 10 notificaciones
 };
 
 export const getUnreadNotificationsCount = (userId: string): number => {
@@ -238,8 +243,68 @@ export const createNotification = (data: Omit<Notification, 'id' | 'fecha' | 'le
   };
 
   notifications.push(newNotification);
+  
+  // Limpieza automática: mantener solo las últimas 100 notificaciones por usuario
+  const userNotifications = notifications.filter(n => n.userId === data.userId);
+  if (userNotifications.length > 100) {
+    const sorted = userNotifications.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    const toKeep = sorted.slice(0, 100);
+    const toRemove = sorted.slice(100);
+    toRemove.forEach(n => {
+      const index = notifications.findIndex(notif => notif.id === n.id);
+      if (index !== -1) notifications.splice(index, 1);
+    });
+  }
+  
   saveNotifications(notifications);
   return newNotification;
+};
+
+// Crear notificación para múltiples usuarios por rol
+export const createNotificationByRole = (
+  rol: UserRole,
+  mensaje: string,
+  tipo: Notification['tipo'],
+  pdfId?: string,
+  carreraDestino?: string
+): Notification[] => {
+  const users = getUsers().filter(user => {
+    const userRoles = Array.isArray(user.rol) ? user.rol : [user.rol];
+    return userRoles.includes(rol) && user.estado === 'activo';
+  });
+
+  return users.map(user => {
+    return createNotification({
+      userId: user.id,
+      mensaje,
+      tipo,
+      pdfId,
+      rolDestino: rol,
+      carreraDestino,
+    });
+  });
+};
+
+// Crear notificación para usuarios de una carrera específica
+export const createNotificationByCarrera = (
+  carrera: string,
+  mensaje: string,
+  tipo: Notification['tipo'],
+  pdfId?: string
+): Notification[] => {
+  const users = getUsers().filter(
+    user => user.carrera.toLowerCase() === carrera.toLowerCase() && user.estado === 'activo'
+  );
+
+  return users.map(user => {
+    return createNotification({
+      userId: user.id,
+      mensaje,
+      tipo,
+      pdfId,
+      carreraDestino: carrera,
+    });
+  });
 };
 
 export const markNotificationAsRead = (id: string): void => {
@@ -273,9 +338,10 @@ export const getSession = (): Session | null => {
   }
 };
 
-export const saveSession = (user: User): void => {
+export const saveSession = (user: User, activeRole?: UserRole): void => {
   const session: Session = {
     user,
+    activeRole: activeRole || (Array.isArray(user.rol) ? user.rol[0] : user.rol),
     loginAt: new Date().toISOString(),
   };
   localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
@@ -285,6 +351,18 @@ export const updateSessionUser = (user: User): void => {
   const session = getSession();
   if (session) {
     session.user = user;
+    // Si el usuario tiene múltiples roles y el rol activo ya no está disponible, usar el primero
+    if (Array.isArray(user.rol) && session.activeRole && !user.rol.includes(session.activeRole)) {
+      session.activeRole = user.rol[0];
+    }
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+  }
+};
+
+export const updateSessionActiveRole = (activeRole: UserRole): void => {
+  const session = getSession();
+  if (session) {
+    session.activeRole = activeRole;
     localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
   }
 };
@@ -358,7 +436,7 @@ export const initializeStorage = (): void => {
         apellidos: 'García',
         email: 'pedro.coordinador@tutorias.com',
         password: encryptPassword('coordinador123'),
-        rol: 'coordinador',
+        rol: ['coordinador', 'docente'], // Coordinador siempre tiene ambos roles
         carrera: 'Ingeniería de Software',
         semestre: 'N/A',
         estado: 'activo',
@@ -411,6 +489,50 @@ export const initializeStorage = (): void => {
       },
     ];
     savePeriodos(defaultPeriodos);
+  }
+
+  // Initialize default semestres if none exist
+  const semestres = getSemestres();
+  if (semestres.length === 0) {
+    const defaultSemestres: Semestre[] = [
+      { id: generateId(), nombre: '1er Semestre', numero: 1, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '2do Semestre', numero: 2, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '3er Semestre', numero: 3, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '4to Semestre', numero: 4, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '5to Semestre', numero: 5, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '6to Semestre', numero: 6, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '7mo Semestre', numero: 7, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '8vo Semestre', numero: 8, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '9no Semestre', numero: 9, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: '10mo Semestre', numero: 10, activo: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: 'Final', numero: 99, activo: true, createdAt: new Date().toISOString() },
+    ];
+    saveSemestres(defaultSemestres);
+  } else {
+    // Asegurar que el semestre "Final" existe (por si se añadió después)
+    const semestreFinal = getSemestreByNombre('Final');
+    if (!semestreFinal) {
+      const semestresActuales = getSemestres();
+      semestresActuales.push({
+        id: generateId(),
+        nombre: 'Final',
+        numero: 99,
+        activo: true,
+        createdAt: new Date().toISOString(),
+      });
+      saveSemestres(semestresActuales);
+    }
+  }
+
+  // Initialize default carreras if none exist
+  const carreras = getCarreras();
+  if (carreras.length === 0) {
+    const defaultCarreras: Carrera[] = [
+      { id: generateId(), nombre: 'Ingeniería de Software', codigo: 'IS', descripcion: 'Carrera de Ingeniería de Software', activa: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: 'Ciencias de la Computación', codigo: 'CC', descripcion: 'Carrera de Ciencias de la Computación', activa: true, createdAt: new Date().toISOString() },
+      { id: generateId(), nombre: 'Ingeniería de Sistemas', codigo: 'SIS', descripcion: 'Carrera de Ingeniería de Sistemas', activa: true, createdAt: new Date().toISOString() },
+    ];
+    saveCarreras(defaultCarreras);
   }
 };
 
@@ -738,4 +860,275 @@ export const deleteMateria = (id: string): boolean => {
   
   saveMaterias(filteredMaterias);
   return true;
+};
+
+export const getMateriaByCodigo = (codigo: string): Materia | undefined => {
+  return getMaterias().find(m => m.codigo.toLowerCase() === codigo.toLowerCase());
+};
+
+export const getMateriasBySemestre = (semestreId: string): Materia[] => {
+  return getMaterias().filter(m => m.semestreId === semestreId && m.activa && m.estado === 'aprobada');
+};
+
+// ==================== SEMESTRES ====================
+
+export const getSemestres = (): Semestre[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.SEMESTRES);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveSemestres = (semestres: Semestre[]): void => {
+  localStorage.setItem(STORAGE_KEYS.SEMESTRES, JSON.stringify(semestres));
+};
+
+export const getSemestreById = (id: string): Semestre | undefined => {
+  return getSemestres().find(s => s.id === id);
+};
+
+export const getSemestreByNombre = (nombre: string): Semestre | undefined => {
+  return getSemestres().find(s => s.nombre.toLowerCase() === nombre.toLowerCase());
+};
+
+export const createSemestre = (data: Omit<Semestre, 'id' | 'createdAt'>): Semestre | null => {
+  // Check if nombre already exists
+  if (getSemestreByNombre(data.nombre)) {
+    return null;
+  }
+
+  const semestres = getSemestres();
+  const newSemestre: Semestre = {
+    ...data,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+  };
+
+  semestres.push(newSemestre);
+  saveSemestres(semestres);
+  return newSemestre;
+};
+
+export const updateSemestre = (id: string, updates: Partial<Omit<Semestre, 'id' | 'createdAt'>>): Semestre | null => {
+  const semestres = getSemestres();
+  const index = semestres.findIndex(s => s.id === id);
+  
+  if (index === -1) return null;
+
+  // If updating nombre, check it doesn't already exist
+  if (updates.nombre && updates.nombre !== semestres[index].nombre) {
+    const existingSemestre = getSemestreByNombre(updates.nombre);
+    if (existingSemestre) return null;
+  }
+
+  semestres[index] = { ...semestres[index], ...updates };
+  saveSemestres(semestres);
+  return semestres[index];
+};
+
+export const deleteSemestre = (id: string): boolean => {
+  const semestres = getSemestres();
+  const filteredSemestres = semestres.filter(s => s.id !== id);
+  
+  if (filteredSemestres.length === semestres.length) return false;
+  
+  saveSemestres(filteredSemestres);
+  return true;
+};
+
+// ==================== DOCENTE-MATERIA-SEMESTRE ====================
+
+export const getDocenteMateriaSemestres = (): DocenteMateriaSemestre[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.DOCENTE_MATERIA_SEMESTRE);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveDocenteMateriaSemestres = (relaciones: DocenteMateriaSemestre[]): void => {
+  localStorage.setItem(STORAGE_KEYS.DOCENTE_MATERIA_SEMESTRE, JSON.stringify(relaciones));
+};
+
+export const getDocenteMateriaSemestreById = (id: string): DocenteMateriaSemestre | undefined => {
+  return getDocenteMateriaSemestres().find(r => r.id === id);
+};
+
+export const getDocentesByMateriaSemestre = (materiaId: string, semestreId: string, carreraId: string): User[] => {
+  const relaciones = getDocenteMateriaSemestres();
+  const relacionesFiltradas = relaciones.filter(
+    r => r.materiaId === materiaId && 
+         r.semestreId === semestreId && 
+         r.carreraId === carreraId && 
+         r.activo
+  );
+  const docenteIds = relacionesFiltradas.map(r => r.docenteId);
+  return getUsers().filter(u => docenteIds.includes(u.id) && u.rol === 'docente' && u.estado === 'activo');
+};
+
+export const getMateriasByDocenteSemestre = (docenteId: string, semestreId: string): Materia[] => {
+  const relaciones = getDocenteMateriaSemestres();
+  const relacionesFiltradas = relaciones.filter(
+    r => r.docenteId === docenteId && r.semestreId === semestreId && r.activo
+  );
+  const materiaIds = relacionesFiltradas.map(r => r.materiaId);
+  return getMaterias().filter(m => materiaIds.includes(m.id) && m.activa && m.estado === 'aprobada');
+};
+
+export const createDocenteMateriaSemestre = (data: Omit<DocenteMateriaSemestre, 'id' | 'createdAt'>): DocenteMateriaSemestre | null => {
+  // Check if relation already exists
+  const relaciones = getDocenteMateriaSemestres();
+  const exists = relaciones.some(
+    r => r.docenteId === data.docenteId && 
+         r.materiaId === data.materiaId && 
+         r.semestreId === data.semestreId
+  );
+  
+  if (exists) {
+    return null;
+  }
+
+  const newRelacion: DocenteMateriaSemestre = {
+    ...data,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+  };
+
+  relaciones.push(newRelacion);
+  saveDocenteMateriaSemestres(relaciones);
+  return newRelacion;
+};
+
+export const updateDocenteMateriaSemestre = (id: string, updates: Partial<Omit<DocenteMateriaSemestre, 'id' | 'createdAt'>>): DocenteMateriaSemestre | null => {
+  const relaciones = getDocenteMateriaSemestres();
+  const index = relaciones.findIndex(r => r.id === id);
+  
+  if (index === -1) return null;
+
+  relaciones[index] = { ...relaciones[index], ...updates };
+  saveDocenteMateriaSemestres(relaciones);
+  return relaciones[index];
+};
+
+export const deleteDocenteMateriaSemestre = (id: string): boolean => {
+  const relaciones = getDocenteMateriaSemestres();
+  const filteredRelaciones = relaciones.filter(r => r.id !== id);
+  
+  if (filteredRelaciones.length === relaciones.length) return false;
+  
+  saveDocenteMateriaSemestres(filteredRelaciones);
+  return true;
+};
+
+// ==================== PDFs ====================
+
+export const getPDFs = (): PDF[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.PDFS);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const savePDFs = (pdfs: PDF[]): void => {
+  localStorage.setItem(STORAGE_KEYS.PDFS, JSON.stringify(pdfs));
+};
+
+export const getPDFById = (id: string): PDF | undefined => {
+  return getPDFs().find(pdf => pdf.id === id);
+};
+
+export const getPDFsByCarrera = (carreraId: string): PDF[] => {
+  return getPDFs().filter(pdf => pdf.carrera === carreraId && pdf.activo);
+};
+
+export const getPDFsByUsuario = (usuarioId: string): PDF[] => {
+  return getPDFs().filter(pdf => pdf.usuarioSubida === usuarioId);
+};
+
+export const createPDF = (data: Omit<PDF, 'id' | 'fecha' | 'activo'>): PDF => {
+  const pdfs = getPDFs();
+  
+  const newPDF: PDF = {
+    ...data,
+    id: generateId(),
+    fecha: new Date().toISOString(),
+    activo: true,
+  };
+
+  pdfs.push(newPDF);
+  savePDFs(pdfs);
+  return newPDF;
+};
+
+export const updatePDF = (id: string, updates: Partial<Omit<PDF, 'id' | 'fecha'>>): PDF | null => {
+  const pdfs = getPDFs();
+  const index = pdfs.findIndex(pdf => pdf.id === id);
+  
+  if (index === -1) return null;
+
+  pdfs[index] = { ...pdfs[index], ...updates };
+  savePDFs(pdfs);
+  return pdfs[index];
+};
+
+export const deletePDF = (id: string): boolean => {
+  const pdfs = getPDFs();
+  const filteredPDFs = pdfs.filter(pdf => pdf.id !== id);
+  
+  if (filteredPDFs.length === pdfs.length) return false;
+  
+  savePDFs(filteredPDFs);
+  
+  // Delete associated notifications
+  const notifications = getNotifications();
+  const filteredNotifications = notifications.filter(n => n.pdfId !== id);
+  saveNotifications(filteredNotifications);
+  
+  return true;
+};
+
+// ==================== METRICS ====================
+
+export const getUserMetrics = (): UserMetrics => {
+  const users = getUsers();
+  const metrics: UserMetrics = {
+    total: users.length,
+    porRol: {
+      admin: 0,
+      coordinador: 0,
+      docente: 0,
+      estudiante: 0,
+    },
+    porCarrera: {},
+    activos: 0,
+    inactivos: 0,
+  };
+
+  users.forEach(user => {
+    // Contar por estado
+    if (user.estado === 'activo') {
+      metrics.activos++;
+    } else {
+      metrics.inactivos++;
+    }
+
+    // Contar por rol
+    const roles = Array.isArray(user.rol) ? user.rol : [user.rol];
+    roles.forEach(rol => {
+      if (metrics.porRol[rol] !== undefined) {
+        metrics.porRol[rol]++;
+      }
+    });
+
+    // Contar por carrera
+    const carrera = user.carrera || 'Sin carrera';
+    metrics.porCarrera[carrera] = (metrics.porCarrera[carrera] || 0) + 1;
+  });
+
+  return metrics;
 };

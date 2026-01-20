@@ -99,23 +99,43 @@ const CoordinadorDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5" />
-                Gestionar Tutorías
+                Gestionar Materias
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 text-sm mb-4">
-                Ver y monitorear todas las tutorías de tu carrera, aprobadas por docentes y estudiantes.
+                Crea y gestiona las materias de tu carrera.
               </p>
               <Button 
-                onClick={() => navigate('/coordinador/tutorias')}
+                onClick={() => navigate('/coordinador/materias')}
                 className="w-full"
               >
-                Ir a Tutorías <ArrowRight className="w-4 h-4 ml-2" />
+                Ir a Materias <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5" />
+                Asignar Docentes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 text-sm mb-4">
+                Asigna docentes a materias por semestre para que los estudiantes puedan solicitar tutorías.
+              </p>
+              <Button 
+                onClick={() => navigate('/coordinador/asignaciones')}
+                className="w-full"
+              >
+                Ir a Asignaciones <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </CardContent>
           </Card>

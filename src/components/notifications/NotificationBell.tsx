@@ -28,6 +28,12 @@ const NotificationBell: React.FC = () => {
         return '📅';
       case 'calificacion':
         return '⭐';
+      case 'pdf':
+        return '📄';
+      case 'usuarios':
+        return '👥';
+      case 'mensaje':
+        return '💬';
       default:
         return '🔔';
     }

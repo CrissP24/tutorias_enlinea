@@ -9,7 +9,7 @@ import { GraduationCap, Mail, Lock, Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const LoginPage: React.FC = () => {
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, isAuthenticated, user, needsRoleSelection, activeRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -22,11 +22,13 @@ const LoginPage: React.FC = () => {
 
   // Redirect if already authenticated
   React.useEffect(() => {
-    if (isAuthenticated && user) {
-      const from = location.state?.from?.pathname || `/${user.rol}`;
+    if (needsRoleSelection) {
+      navigate('/select-role', { replace: true });
+    } else if (isAuthenticated && activeRole) {
+      const from = location.state?.from?.pathname || `/${activeRole}`;
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, user, navigate, location]);
+  }, [isAuthenticated, needsRoleSelection, activeRole, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,10 +37,15 @@ const LoginPage: React.FC = () => {
     const result = await login(formData);
 
     if (result.success) {
-      toast({
-        title: '¡Bienvenido!',
-        description: 'Has iniciado sesión correctamente.',
-      });
+      if (result.needsRoleSelection) {
+        // User has multiple roles, redirect to role selector
+        navigate('/select-role', { replace: true });
+      } else {
+        toast({
+          title: '¡Bienvenido!',
+          description: 'Has iniciado sesión correctamente.',
+        });
+      }
     } else {
       toast({
         title: 'Error',
@@ -125,8 +132,8 @@ const LoginPage: React.FC = () => {
               <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
                   <p className="font-medium mb-1">Credenciales de prueba:</p>
                   <p>Admin: admin@tutorias.com / admin123</p>
-                  <p>Docente: carlos.docente@tutorias.com / docente123</p>
-                  <p>Estudiante: juan.estudiante@tutorias.com / estudiante123</p>
+                  <p>Docente: coordinador@tutorias.com /coordinador123</p>
+                 
               </div>
             </CardContent>
 

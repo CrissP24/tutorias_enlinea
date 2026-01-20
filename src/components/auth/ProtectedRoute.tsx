@@ -13,7 +13,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   allowedRoles 
 }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, activeRole, needsRoleSelection } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking auth
@@ -25,19 +25,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Redirect to role selection if user has multiple roles and hasn't selected one
+  if (user && needsRoleSelection) {
+    return <Navigate to="/select-role" state={{ from: location }} replace />;
+  }
+
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check role permissions
-  if (allowedRoles && user && !allowedRoles.includes(user.rol)) {
-    // Redirect to appropriate dashboard based on role
-    const dashboardPath = user.rol === 'admin' 
+  // Check role permissions using activeRole
+  if (allowedRoles && activeRole && !allowedRoles.includes(activeRole)) {
+    // Redirect to appropriate dashboard based on active role
+    const dashboardPath = activeRole === 'admin' 
       ? '/admin' 
-      : user.rol === 'coordinador' 
+      : activeRole === 'coordinador' 
         ? '/coordinador'
-        : user.rol === 'docente' 
+        : activeRole === 'docente' 
         ? '/docente' 
         : '/estudiante';
     return <Navigate to={dashboardPath} replace />;

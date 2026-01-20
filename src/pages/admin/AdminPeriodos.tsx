@@ -113,7 +113,7 @@ const AdminPeriodos = () => {
                 Nuevo Período
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? 'Editar Período' : 'Crear Nuevo Período'}

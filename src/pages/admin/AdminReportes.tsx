@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUsers, getTutorias } from '@/lib/storage';
+import { getUsers, getTutorias, userHasRole } from '@/lib/storage';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StarRating } from '@/components/ui/star-rating';

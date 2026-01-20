@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { getUsers, getTutorias, deleteTutoria } from '@/lib/storage';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import type { Tutoria, TutoriaStatus } from '@/types';
 
 const AdminTutorias: React.FC = () => {
   const { toast } = useToast();
-  const [tutorias, setTutorias] = useState<Tutoria[]>(getTutorias());
+  const [tutorias, setTutorias] = useState<Tutoria[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<TutoriaStatus | 'all'>('all');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -31,26 +31,61 @@ const AdminTutorias: React.FC = () => {
 
   const users = useMemo(() => getUsers(), []);
 
+  // Cargar tutorías al montar el componente y refrescar periódicamente
+  useEffect(() => {
+    const loadTutorias = () => {
+      try {
+        const allTutorias = getTutorias();
+        setTutorias(allTutorias);
+      } catch (error) {
+        console.error('Error al cargar tutorías:', error);
+        setTutorias([]);
+      }
+    };
+
+    loadTutorias();
+    
+    // Refrescar cada 5 segundos para mantener los datos actualizados
+    const interval = setInterval(loadTutorias, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const getUserName = (id: string) => {
     const user = users.find(u => u.id === id);
     return user ? `${user.nombres} ${user.apellidos}` : 'Desconocido';
   };
 
   const filteredTutorias = useMemo(() => {
+    if (!tutorias || tutorias.length === 0) {
+      return [];
+    }
+
     return tutorias.filter(tutoria => {
+      // Normalizar estado: 'Solicitada' -> 'pendiente'
+      const estadoNormalizado = tutoria.estado === 'Solicitada' ? 'pendiente' : tutoria.estado;
+      
       const estudiante = getUserName(tutoria.estudianteId).toLowerCase();
       const docente = getUserName(tutoria.docenteId).toLowerCase();
-      const tema = tutoria.tema.toLowerCase();
+      const tema = (tutoria.tema || '').toLowerCase();
       const search = searchTerm.toLowerCase();
       
       const matchesSearch = 
         estudiante.includes(search) ||
         docente.includes(search) ||
         tema.includes(search);
-      const matchesStatus = filterStatus === 'all' || tutoria.estado === filterStatus;
+      
+      // Comparar con estado normalizado
+      const matchesStatus = filterStatus === 'all' || 
+                           tutoria.estado === filterStatus || 
+                           (filterStatus === 'pendiente' && tutoria.estado === 'Solicitada');
       
       return matchesSearch && matchesStatus;
-    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }).sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      return dateB - dateA;
+    });
   }, [tutorias, searchTerm, filterStatus, users]);
 
   const refreshTutorias = () => {
@@ -146,8 +181,11 @@ const AdminTutorias: React.FC = () => {
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                          <h3 className="font-semibold text-foreground">{tutoria.tema}</h3>
-                          <StatusBadge status={tutoria.estado} size="sm" />
+                          <h3 className="font-semibold text-foreground">{tutoria.tema || 'Sin tema'}</h3>
+                          <StatusBadge 
+                            status={tutoria.estado === 'Solicitada' ? 'pendiente' : tutoria.estado} 
+                            size="sm" 
+                          />
                         </div>
                         
                         <p className="text-sm text-muted-foreground">

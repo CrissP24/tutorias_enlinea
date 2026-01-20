@@ -179,7 +179,7 @@ const AdminCarreras: React.FC = () => {
         </Card>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedCarrera ? 'Editar Carrera' : 'Nueva Carrera'}</DialogTitle>
               <DialogDescription>{selectedCarrera ? 'Modifica los datos de la carrera.' : 'Crea una nueva carrera en el sistema.'}</DialogDescription>
@@ -229,5 +229,8 @@ const AdminCarreras: React.FC = () => {
 };
 
 export default AdminCarreras;
+
+
+
 
 

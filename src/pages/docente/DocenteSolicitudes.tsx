@@ -129,7 +129,7 @@ const DocenteSolicitudes: React.FC = () => {
                               Rechazar
                             </Button>
                           </DialogTrigger>
-                          <DialogContent>
+                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Rechazar Solicitud de Tutoría</DialogTitle>
                             </DialogHeader>

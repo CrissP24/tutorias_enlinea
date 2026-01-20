@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
-import { createUser, encryptPassword, getUserByEmail, getUserByCedula, isValidEmail, isValidCedula, getUsers } from '@/lib/storage';
+import { createUser, encryptPassword, getUserByEmail, getUserByCedula, isValidEmail, isValidCedula, getUsers, createNotificationByCarrera, getUserMetrics } from '@/lib/storage';
+import { createUserTemplate } from '@/lib/excelTemplate';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -161,9 +162,21 @@ const ExcelUploadCoordinador: React.FC<{ onComplete?: () => void }> = ({ onCompl
       const successCount = uploadResults.filter(r => r.success).length;
       const errorCount = uploadResults.filter(r => !r.success).length;
 
+      // Crear notificación para estudiantes de la carrera sobre nuevos usuarios
+      if (successCount > 0) {
+        createNotificationByCarrera(
+          userCarrera,
+          `Se cargaron ${successCount} nuevos estudiantes en ${userCarrera}`,
+          'usuarios'
+        );
+      }
+
+      // Obtener métricas actualizadas
+      const metrics = getUserMetrics();
+
       toast({
         title: 'Procesamiento completado',
-        description: `${successCount} estudiantes creados, ${errorCount} errores.`,
+        description: `${successCount} estudiantes creados, ${errorCount} errores. Total estudiantes en ${userCarrera}: ${metrics.porCarrera[userCarrera] || 0}`,
         variant: errorCount > 0 ? 'destructive' : 'default',
       });
 
@@ -198,16 +211,16 @@ const ExcelUploadCoordinador: React.FC<{ onComplete?: () => void }> = ({ onCompl
   };
 
   const downloadTemplate = () => {
-    const template = [
-      ['cedula', 'nombres', 'correo', 'rol', 'carrera', 'nivel', 'estado'],
-      ['1234567890', 'Juan Pérez García', 'juan.perez@institucion.edu', 'estudiante', userCarrera, '5to Semestre', 'activo'],
-      ['0987654321', 'María López Silva', 'maria.lopez@institucion.edu', 'estudiante', userCarrera, '3er Semestre', 'activo'],
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'usuarios');
-    XLSX.writeFile(wb, `plantilla-estudiantes-${userCarrera}.xlsx`);
+    try {
+      createUserTemplate(true, userCarrera);
+    } catch (error) {
+      console.error('Error al descargar plantilla:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo descargar la plantilla. Por favor intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

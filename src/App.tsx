@@ -10,6 +10,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/auth/LoginPage";
+import RoleSelector from "./components/auth/RoleSelector";
 import ProfilePage from "./pages/ProfilePage";
 import CalendarPage from "./pages/CalendarPage";
 
@@ -21,6 +22,7 @@ import AdminReportes from "./pages/admin/AdminReportes";
 import AdminPeriodos from "./pages/admin/AdminPeriodos";
 import AdminCarreras from "./pages/admin/AdminCarreras";
 import AdminMaterias from "./pages/admin/AdminMaterias";
+import AdminPDFs from "./pages/admin/AdminPDFs";
 
 // Coordinador
 import CoordinadorDashboard from "./pages/coordinador/CoordinadorDashboard";
@@ -28,6 +30,8 @@ import CoordinadorTutorias from "./pages/coordinador/CoordinadorTutorias";
 import CoordinadorReportes from "./pages/coordinador/CoordinadorReportes";
 import CoordinadorMaterias from "./pages/coordinador/CoordinadorMaterias";
 import CoordinadorCargaMasiva from "./pages/coordinador/CoordinadorCargaMasiva";
+import CoordinadorAsignaciones from "./pages/coordinador/CoordinadorAsignaciones";
+import CoordinadorPDFs from "./pages/coordinador/CoordinadorPDFs";
 
 // Docente
 import DocenteDashboard from "./pages/docente/DocenteDashboard";
@@ -40,6 +44,7 @@ import EstudianteDashboard from "./pages/estudiante/EstudianteDashboard";
 import EstudianteSolicitar from "./pages/estudiante/EstudianteSolicitar";
 import EstudianteHistorial from "./pages/estudiante/EstudianteHistorial";
 import EstudianteReportes from "./pages/estudiante/EstudianteReportes";
+import EstudiantePDFs from "./pages/estudiante/EstudiantePDFs";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +59,12 @@ const App = () => (
             {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginPage />} />
+            {/* Role selector - accessible when user is logged in but needs to select role */}
+            <Route path="/select-role" element={
+              <ProtectedRoute allowedRoles={['admin', 'coordinador', 'docente', 'estudiante']}>
+                <RoleSelector />
+              </ProtectedRoute>
+            } />
 
             {/* Profile - All authenticated users */}
             <Route path="/perfil" element={<ProtectedRoute allowedRoles={['admin', 'coordinador', 'docente', 'estudiante']}><ProfilePage /></ProtectedRoute>} />
@@ -67,13 +78,16 @@ const App = () => (
             <Route path="/admin/tutorias" element={<ProtectedRoute allowedRoles={['admin']}><AdminTutorias /></ProtectedRoute>} />
             <Route path="/admin/periodos" element={<ProtectedRoute allowedRoles={['admin']}><AdminPeriodos /></ProtectedRoute>} />
             <Route path="/admin/reportes" element={<ProtectedRoute allowedRoles={['admin']}><AdminReportes /></ProtectedRoute>} />
+            <Route path="/admin/pdfs" element={<ProtectedRoute allowedRoles={['admin']}><AdminPDFs /></ProtectedRoute>} />
 
             {/* Coordinador */}
             <Route path="/coordinador" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorDashboard /></ProtectedRoute>} />
             <Route path="/coordinador/materias" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorMaterias /></ProtectedRoute>} />
+            <Route path="/coordinador/asignaciones" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorAsignaciones /></ProtectedRoute>} />
             <Route path="/coordinador/carga-masiva" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorCargaMasiva /></ProtectedRoute>} />
             <Route path="/coordinador/tutorias" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorTutorias /></ProtectedRoute>} />
             <Route path="/coordinador/reportes" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorReportes /></ProtectedRoute>} />
+            <Route path="/coordinador/pdfs" element={<ProtectedRoute allowedRoles={['coordinador']}><CoordinadorPDFs /></ProtectedRoute>} />
 
             {/* Docente */}
             <Route path="/docente" element={<ProtectedRoute allowedRoles={['docente']}><DocenteDashboard /></ProtectedRoute>} />
@@ -86,6 +100,7 @@ const App = () => (
             <Route path="/estudiante/solicitar" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudianteSolicitar /></ProtectedRoute>} />
             <Route path="/estudiante/historial" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudianteHistorial /></ProtectedRoute>} />
             <Route path="/estudiante/reportes" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudianteReportes /></ProtectedRoute>} />
+            <Route path="/estudiante/pdfs" element={<ProtectedRoute allowedRoles={['estudiante']}><EstudiantePDFs /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

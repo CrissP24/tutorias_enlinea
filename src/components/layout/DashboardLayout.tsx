@@ -2,6 +2,12 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { 
   GraduationCap, 
@@ -17,9 +23,13 @@ import {
   User,
   CalendarDays,
   School,
-  BookMarked
+  BookMarked,
+  UserCog,
+  UserCheck,
+  FileSpreadsheet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { UserRole } from '@/types';
 
 interface NavItem {
   label: string;
@@ -28,21 +38,30 @@ interface NavItem {
 }
 
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, activeRole, logout, selectRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
-  const getNavItems = (): NavItem[] => {
+  // Get user roles as array
+  const getUserRoles = (): UserRole[] => {
     if (!user) return [];
+    return Array.isArray(user.rol) ? user.rol : [user.rol];
+  };
+
+  const userRoles = getUserRoles();
+  const hasMultipleRoles = userRoles.length > 1;
+
+  const getNavItems = (): NavItem[] => {
+    if (!user || !activeRole) return [];
 
     const baseItems: NavItem[] = [
-      { label: 'Dashboard', path: `/${user.rol}`, icon: <LayoutDashboard className="h-5 w-5" /> },
+      { label: 'Dashboard', path: `/${activeRole}`, icon: <LayoutDashboard className="h-5 w-5" /> },
       { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
       { label: 'Mi Perfil', path: '/perfil', icon: <User className="h-5 w-5" /> },
     ];
 
-    switch (user.rol) {
+    switch (activeRole) {
       case 'admin':
         return [
           { label: 'Dashboard', path: '/admin', icon: <LayoutDashboard className="h-5 w-5" /> },
@@ -52,6 +71,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           { label: 'Tutorías', path: '/admin/tutorias', icon: <BookOpen className="h-5 w-5" /> },
           { label: 'Períodos', path: '/admin/periodos', icon: <CalendarDays className="h-5 w-5" /> },
           { label: 'Reportes', path: '/admin/reportes', icon: <FileText className="h-5 w-5" /> },
+          { label: 'PDFs', path: '/admin/pdfs', icon: <FileSpreadsheet className="h-5 w-5" /> },
           { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
           { label: 'Mi Perfil', path: '/perfil', icon: <User className="h-5 w-5" /> },
         ];
@@ -59,9 +79,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         return [
           { label: 'Dashboard', path: '/coordinador', icon: <LayoutDashboard className="h-5 w-5" /> },
           { label: 'Materias', path: '/coordinador/materias', icon: <BookMarked className="h-5 w-5" /> },
+          { label: 'Asignaciones', path: '/coordinador/asignaciones', icon: <UserCheck className="h-5 w-5" /> },
           { label: 'Carga Masiva', path: '/coordinador/carga-masiva', icon: <Users className="h-5 w-5" /> },
           { label: 'Tutorías', path: '/coordinador/tutorias', icon: <BookOpen className="h-5 w-5" /> },
           { label: 'Reportes', path: '/coordinador/reportes', icon: <FileText className="h-5 w-5" /> },
+          { label: 'PDFs', path: '/coordinador/pdfs', icon: <FileSpreadsheet className="h-5 w-5" /> },
           { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
           { label: 'Mi Perfil', path: '/perfil', icon: <User className="h-5 w-5" /> },
         ];
@@ -80,6 +102,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           { label: 'Solicitar Tutoría', path: '/estudiante/solicitar', icon: <BookOpen className="h-5 w-5" /> },
           { label: 'Mis Tutorías', path: '/estudiante/historial', icon: <FileText className="h-5 w-5" /> },
           { label: 'Reportes', path: '/estudiante/reportes', icon: <FileText className="h-5 w-5" /> },
+          { label: 'PDFs', path: '/estudiante/pdfs', icon: <FileSpreadsheet className="h-5 w-5" /> },
           { label: 'Calendario', path: '/calendario', icon: <CalendarDays className="h-5 w-5" /> },
           { label: 'Mi Perfil', path: '/perfil', icon: <User className="h-5 w-5" /> },
         ];
@@ -95,13 +118,21 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     navigate('/login');
   };
 
-  const getRoleName = () => {
-    switch (user?.rol) {
+  const getRoleName = (role?: UserRole) => {
+    const roleToCheck = role || activeRole;
+    switch (roleToCheck) {
       case 'admin': return 'Administrador';
+      case 'coordinador': return 'Coordinador';
       case 'docente': return 'Docente';
       case 'estudiante': return 'Estudiante';
       default: return '';
     }
+  };
+
+  const handleRoleChange = (newRole: UserRole) => {
+    selectRole(newRole);
+    // Redirect to the new role's dashboard
+    navigate(`/${newRole}`, { replace: true });
   };
 
   return (
@@ -156,7 +187,32 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
               <p className="truncate text-sm font-medium text-sidebar-foreground">
                 {user?.nombres || ''} {user?.apellidos || ''}
               </p>
-              <p className="text-xs text-sidebar-foreground/60">{getRoleName()}</p>
+              {hasMultipleRoles ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground flex items-center gap-1">
+                      {getRoleName(activeRole || undefined)}
+                      <UserCog className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {userRoles.map((role) => (
+                      <DropdownMenuItem
+                        key={role}
+                        onClick={() => handleRoleChange(role)}
+                        className={cn(
+                          "cursor-pointer",
+                          role === activeRole && "bg-accent font-medium"
+                        )}
+                      >
+                        {getRoleName(role)}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <p className="text-xs text-sidebar-foreground/60">{getRoleName(activeRole || undefined)}</p>
+              )}
             </div>
           </div>
           <Button variant="ghost" className="w-full justify-start text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive" onClick={handleLogout}>
